@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env --tsconfig tsconfig.seed.json src/server/db/seed.ts",
+    "test": "tsx --env-file-if-exists=.env.local --test --tsconfig tsconfig.seed.json tests/*.test.ts",
     "test:routes": "tsx --tsconfig tsconfig.seed.json scripts/verify-routes.ts",
     "test:qr": "tsx --tsconfig tsconfig.seed.json scripts/verify-qr.ts",
     "db:backfill": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env --tsconfig tsconfig.seed.json src/server/db/backfill.ts",

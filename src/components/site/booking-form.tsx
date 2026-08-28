@@ -3,26 +3,33 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { EXTRA_PRICES, ONE_OFF_EXTRAS, durationDiscount, extraTotal } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
+const EXTRA_NOTES: Record<string, string> = {
+  "Full insurance": "Takes your liability to zero",
+  "Additional driver": "Per extra named driver",
+  "Child seat": "Fitted and checked before handover",
+  "Unlimited mileage": "Removes the 120km/day cap in Dhaka",
+  "Wi-Fi hotspot": "4G, unlimited data",
+  "Airport pickup": "Name board, one hour waiting. Charged once",
+};
+
+/**
+ * Prices come from the shared pricing module, never from a copy kept here.
+ * The form previously held its own figures and its own one-off rule, which is
+ * how the preview came to disagree with what the server actually charged.
+ */
 const EXTRAS = [
-  { name: "Full insurance", perDay: 1200, note: "Takes your liability to zero" },
-  { name: "Additional driver", perDay: 800, note: "Per extra named driver" },
-  { name: "Child seat", perDay: 500, note: "Fitted and checked before handover" },
-  { name: "Unlimited mileage", perDay: 900, note: "Removes the 120km/day cap in Dhaka" },
-  { name: "Wi-Fi hotspot", perDay: 400, note: "4G, unlimited data" },
-  { name: "Airport pickup", perDay: 1500, note: "Name board, one hour waiting. Charged once" },
-];
+  "Full insurance",
+  "Additional driver",
+  "Child seat",
+  "Unlimited mileage",
+  "Wi-Fi hotspot",
+  "Airport pickup",
+].map((name) => ({ name, perDay: EXTRA_PRICES[name], note: EXTRA_NOTES[name] }));
 
-const ONE_OFF = new Set(["Airport pickup"]);
-
-function discountRate(days: number) {
-  if (days >= 28) return 0.25;
-  if (days >= 14) return 0.18;
-  if (days >= 7) return 0.12;
-  if (days >= 3) return 0.05;
-  return 0;
-}
+const ONE_OFF = ONE_OFF_EXTRAS;
 
 function isoIn(days: number) {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
@@ -62,13 +69,9 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
 
   const totals = useMemo(() => {
     const base = pricePerDay * days;
-    const rate = discountRate(days);
+    const rate = durationDiscount(days);
     const discount = base * rate;
-    const extrasTotal = extras.reduce((sum, name_) => {
-      const extra = EXTRAS.find((e) => e.name === name_);
-      if (!extra) return sum;
-      return sum + extra.perDay * (ONE_OFF.has(name_) ? 1 : days);
-    }, 0);
+    const extrasTotal = extras.reduce((sum, name_) => sum + extraTotal(name_, days), 0);
     const couponDiscount = coupon ? Math.min(coupon.discount, base - discount) : 0;
     return {
       base,

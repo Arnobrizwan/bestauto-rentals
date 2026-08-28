@@ -1,5 +1,5 @@
 import { emit } from "@/automation/engine";
-import { EXTRA_PRICES, durationDiscount } from "@/ai/tools";
+import { EXTRA_PRICES, ONE_OFF_EXTRAS, durationDiscount } from "@/ai/tools";
 import { log } from "@/lib/observability/logger";
 import { formatCurrency } from "@/lib/utils";
 import { sanitizeText } from "@/lib/security/http";
@@ -28,7 +28,8 @@ export function quote(pricePerDay: number, days: number, extras: string[]): Quot
   const extraLines = valid.map((name) => ({
     name,
     perDay: EXTRA_PRICES[name],
-    total: EXTRA_PRICES[name] * days,
+    // A one-off is billed once for the hire, not once a day.
+    total: EXTRA_PRICES[name] * (ONE_OFF_EXTRAS.has(name) ? 1 : days),
   }));
   const extrasTotal = extraLines.reduce((sum, e) => sum + e.total, 0);
   return {

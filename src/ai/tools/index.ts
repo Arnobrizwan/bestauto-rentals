@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { EXTRA_PRICES, durationDiscount } from "@/lib/pricing";
+
 import { countOverlapping } from "@/server/repositories/bookings";
 import { getVehicleBySlug, listFacets, listVehicles } from "@/server/repositories/vehicles";
 import type { ToolSpec } from "@/ai/provider/types";
@@ -67,24 +69,10 @@ const captureLeadInput = z.object({
   partySize: z.number().int().optional(),
 });
 
-/** Extras priced in BDT per day, except airport pickup which is a one-off. */
-export const EXTRA_PRICES: Record<string, number> = {
-  "Additional driver": 800,
-  "Child seat": 500,
-  "Full insurance": 1200,
-  "Unlimited mileage": 900,
-  "Airport pickup": 1500,
-  "Wi-Fi hotspot": 400,
-};
-
-/** Multi-day discounts — the same ladder the booking service charges. */
-export function durationDiscount(days: number) {
-  if (days >= 28) return 0.25;
-  if (days >= 14) return 0.18;
-  if (days >= 7) return 0.12;
-  if (days >= 3) return 0.05;
-  return 0;
-}
+/* Pricing lives in `@/lib/pricing` so the booking form can read the same
+   numbers without importing the tool executors. Re-exported here because the
+   agents and the tool registry have always imported them from this module. */
+export { EXTRA_PRICES, ONE_OFF_EXTRAS, durationDiscount, extraTotal } from "@/lib/pricing";
 
 const jsonSchema = (schema: z.ZodType) =>
   z.toJSONSchema(schema, { target: "draft-2020-12", io: "input" }) as Record<string, unknown>;
