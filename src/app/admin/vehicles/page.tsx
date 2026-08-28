@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { FilterTabs, PageHeader, SortMenu, TableSearch } from "@/components/admin/table";
+import { ExportButton } from "@/components/admin/export-button";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { listVehicles } from "@/server/repositories/vehicles";
@@ -31,7 +32,9 @@ export default async function VehiclesPage({ searchParams }: { searchParams: Sea
       <PageHeader
         title="Vehicles"
         subtitle={`${items.length} models · ${totalUnits} units · ${available} available right now`}
-      />
+      >
+        <ExportButton dataset="vehicles" />
+      </PageHeader>
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {[

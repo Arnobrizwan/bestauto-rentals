@@ -57,6 +57,26 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   cancelled: "danger",
 };
 
+/**
+ * Where a stat card leads.
+ *
+ * The tiles were terminal: an operator reading "601 bookings" had to go to the
+ * bookings table and rebuild the same period by hand. The link carries the
+ * dashboard's current range so the table opens on exactly the set the figure
+ * was counted from — `range` for a preset, explicit dates for a custom one,
+ * matching what the bookings page already parses.
+ */
+function drillTo(path: string, range: RangeState, extra: Record<string, string> = {}) {
+  const params = new URLSearchParams(extra);
+  if (range.from && range.to) {
+    params.set("from", range.from);
+    params.set("to", range.to);
+  } else {
+    params.set("range", range.preset);
+  }
+  return `${path}?${params.toString()}`;
+}
+
 function rangeQuery(range: RangeState) {
   const params = new URLSearchParams();
   if (range.from && range.to) {
@@ -203,7 +223,12 @@ export function Dashboard({
       >
         <Card className="flex items-center justify-between gap-4 px-6 py-6">
           <div>
-            <p className="font-admin text-[15px] font-bold text-brand-400">Revenue</p>
+            <Link
+              href={drillTo("/admin/bookings", range, { status: "success" })}
+              className="font-admin text-[15px] font-bold text-brand-400 hover:underline"
+            >
+              Revenue
+            </Link>
             <p className="mt-2 font-admin text-[32px] leading-none font-bold text-ink-900">
               {formatCurrency(kpis.revenue.value)}
             </p>
@@ -249,7 +274,9 @@ export function Dashboard({
             className="mt-1.5 text-[14px] text-white/85"
             title={`${kpis.bookings.delta >= 0 ? "+" : ""}${kpis.bookings.delta.toFixed(0)}% vs the previous period`}
           >
-            No of Total Bookings
+            <Link href={drillTo("/admin/bookings", range)} className="hover:underline">
+              No of Total Bookings
+            </Link>
           </p>
         </Card>
 

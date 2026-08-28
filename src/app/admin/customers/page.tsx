@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { PageHeader, Pagination, TableSearch } from "@/components/admin/table";
+import { ExportButton } from "@/components/admin/export-button";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { listCustomers } from "@/server/repositories/customers";
@@ -28,7 +29,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
 
   return (
     <>
-      <PageHeader title="Customers" subtitle="Ranked by lifetime value across every completed booking." />
+      <PageHeader title="Customers" subtitle="Ranked by lifetime value across every completed booking." >
+        <ExportButton dataset="customers" />
+      </PageHeader>
 
       <Card className="overflow-hidden">
         <div className="border-b border-line p-4">

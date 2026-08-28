@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { FilterTabs, PageHeader, Pagination, SortMenu, TableSearch } from "@/components/admin/table";
+import { ExportButton } from "@/components/admin/export-button";
 import { SOURCE_LABELS } from "@/components/charts/mini";
 import { Badge, Card, EmptyState, Skeleton, type BadgeTone } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -23,15 +24,25 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
   const params = await searchParams;
   const page = Math.max(1, Number(first(params.page) ?? 1) || 1);
 
+  // The dashboard tiles link here with the period they were counted over, so
+  // the table has to honour it — otherwise "601 bookings" lands on a list
+  // filtered to something else and the figure looks wrong. With no period in
+  // the query string this stays the full history it has always been.
+  const periodParam = first(params.range) ?? (first(params.from) && first(params.to) ? "custom" : undefined);
+  const range = periodParam ? resolveRange(first(params.range), first(params.from), first(params.to)) : undefined;
+
   const [result, mix] = await Promise.all([
     listBookings({
       status: first(params.status),
       q: first(params.q),
       sort: (first(params.sort) ?? "newest") as "newest",
+      from: range?.from,
+      to: range?.to,
       page,
       pageSize: 12,
     }),
-    getStatusMix(resolveRange("365d")),
+    // The facet counts describe the same period as the rows beneath them.
+    getStatusMix(range ?? resolveRange("365d")),
   ]);
 
   const countFor = (status: string) => mix.find((m) => m.status === status)?.n;
@@ -39,7 +50,16 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
 
   return (
     <>
-      <PageHeader title="Bookings" subtitle="Every reservation the platform has taken, newest first." />
+      <PageHeader
+        title="Bookings"
+        subtitle={
+          range
+            ? `${formatDate(range.from)} - ${formatDate(range.to)} · ${allCount} in this period`
+            : "Every reservation the platform has taken, newest first."
+        }
+      >
+        <ExportButton dataset="bookings" />
+      </PageHeader>
 
       <Card className="overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-line p-4 lg:flex-row lg:items-center">

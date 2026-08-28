@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { LeadRow, type LeadView } from "@/components/admin/lead-row";
 import { FilterTabs, PageHeader, Pagination, TableSearch } from "@/components/admin/table";
+import { ExportButton } from "@/components/admin/export-button";
 import { Card, EmptyState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { getLeadFunnel, listLeads } from "@/server/repositories/leads";
@@ -57,7 +58,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       <PageHeader
         title="Leads"
         subtitle={`${total} inbound enquiries, scored automatically the moment they arrive.`}
-      />
+      >
+        <ExportButton dataset="leads" />
+      </PageHeader>
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {cards.map((card) => {

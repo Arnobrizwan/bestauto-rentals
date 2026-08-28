@@ -147,6 +147,21 @@ export async function GET(req: Request) {
           responses: { "200": { description: "valid true with the discount, or false with a reason" }, "422": errorResponse },
         },
       },
+      "/api/export": {
+        get: {
+          summary: "CSV export of an admin table",
+          description:
+            "Re-runs the page's own query from the same query string, so the file carries the operator's filters, search and period — and the whole result set rather than the page they were on. Datasets: bookings, leads, customers, vehicles. Capped at 5,000 rows.",
+          parameters: [
+            { name: "dataset", in: "query", required: true, schema: { enum: ["bookings", "leads", "customers", "vehicles"] } },
+            { name: "range", in: "query", schema: { enum: ["7d", "30d", "90d", "365d"] } },
+            { name: "from", in: "query", schema: { type: "string", format: "date" } },
+            { name: "to", in: "query", schema: { type: "string", format: "date" } },
+            { name: "q", in: "query", schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "text/csv attachment" }, "401": errorResponse, "422": errorResponse },
+        },
+      },
       "/api/team": {
         get: { summary: "Staff accounts (never returns a password hash)", responses: { "200": { description: "Members" }, "401": errorResponse } },
         post: {
