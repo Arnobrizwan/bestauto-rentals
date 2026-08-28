@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/site/logo";
-import { getSessionClaims } from "@/lib/auth/server";
+import { getCurrentAdmin } from "@/lib/auth/server";
 import { countAdmins } from "@/server/repositories/admin-users";
 
 import { LoginForm } from "./login-form";
@@ -20,8 +20,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   // Only ever bounce back to a path on this origin.
   const next = raw?.startsWith("/") && !raw.startsWith("//") ? raw : "/admin";
 
-  const claims = await getSessionClaims();
-  if (claims) redirect(next);
+  // This has to ask the same question the admin layout asks. It used to check
+  // only the cookie's signature: a correctly signed cookie whose account had
+  // since been deleted or deactivated was bounced to /admin, which bounced it
+  // straight back here, and the browser gave up with ERR_TOO_MANY_REDIRECTS —
+  // unrecoverable without clearing cookies by hand. Checking the account
+  // itself means a stale session lands on the form instead of in a loop.
+  const admin = await getCurrentAdmin();
+  if (admin) redirect(next);
+
+  const stale = params.stale === "1";
 
   // A fresh deployment has no staff account yet; send the first person to setup.
   if ((await countAdmins()) === 0) redirect("/setup");
@@ -38,6 +46,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <p className="mt-1.5 text-[14px] text-ink-400">
             The Best Auto operations dashboard. Staff accounts only.
           </p>
+
+          {stale && (
+            <p
+              role="status"
+              className="mt-4 rounded-xl bg-warning-soft px-3.5 py-2.5 text-[13px] font-medium text-brand-600"
+            >
+              That session is no longer valid — the account was deactivated or removed. Signing in again will replace it.
+            </p>
+          )}
 
           <div className="mt-6">
             <LoginForm next={next} />

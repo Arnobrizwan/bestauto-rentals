@@ -9,7 +9,7 @@ automation engine** wired through the middle.
 |---|---|
 | **Live site** | **https://bestauto-rentals.vercel.app** |
 | **Admin dashboard** | **https://bestauto-rentals.vercel.app/admin** |
-| **Admin sign-in** | `ops@bestauto.com.bd` / `BestAuto-Setup-2026` |
+| **Reviewer sign-in** | `reviewer@bestauto.com.bd` / `BestAuto-Review-2026` — read-only |
 | **Market** | Bangladesh — BDT (৳) with lakh/crore grouping, 11 branches, chauffeur-included pricing |
 | **API reference** | https://bestauto-rentals.vercel.app/api/openapi |
 | **Health check** | https://bestauto-rentals.vercel.app/api/health |
@@ -63,7 +63,7 @@ npm run db:push     # create the schema
 
 npm run db:seed     # creates no admin; visit /setup to make the first one   # 12 vehicles, 140 customers,
                                                         # ~600 bookings, 42 scored leads, 8 rules
-npm run dev         # sign in at /login with ops@bestauto.com.bd
+npm run dev         # sign in at /login with the account /setup created
 ```
 
 | Script | Purpose |
@@ -76,7 +76,7 @@ npm run dev         # sign in at /login with ops@bestauto.com.bd
 | `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables, and only when empty, so it is safe against a live database |
 | `npm run test:routes` | Asserts every sidebar link resolves and every admin page is linked |
 | `npm run test:qr` | Golden test for the QR encoder |
-| `npm run eval` | **AI evaluation suite** — 55 assertions, exits non-zero below 85% |
+| `npm run eval` | **AI evaluation suite** — 65 assertions; every one must pass on the rules engine, 85% when a hosted model answers |
 | `npm run build:map` | Regenerates the world-map paths from the TopoJSON atlas |
 
 ### Environment
@@ -215,12 +215,18 @@ asserts it: **any answer containing a price must have called a tool that could p
 
 ### Evaluation
 
-`npm run eval` runs 55 assertions across 21 golden cases. They assert *behaviour*, not wording, so
+`npm run eval` runs 65 assertions across 23 golden cases. They assert *behaviour*, not wording, so
 the same suite grades the rules engine and any hosted model.
 
 ```
-  55/55 checks passed (100.0%) across 3 suites
+  65/65 checks passed (100.0%) across 3 suites
 ```
+
+**The threshold depends on the engine.** A hosted model rephrases itself between runs, so a small
+tolerance stops a wording change failing the build; the deterministic engine has no such variance, so
+every check must pass. That distinction is not academic — a real parsing bug, where the word
+"budget" was read as a request for a small car and a party of six was told nothing matched, scored
+96.9% and sailed straight through a flat 85% gate.
 
 The suite found four real defects during development, all fixed and now regression-covered:
 age questions routing to vehicle search instead of policy; `"next month"` being double-counted as
@@ -538,7 +544,15 @@ Worth stating plainly rather than leaving to be discovered:
 - **Live site:** https://bestauto-rentals.vercel.app
 - **Repository:** https://github.com/Arnobrizwan/bestauto-rentals
 - **Admin dashboard:** https://bestauto-rentals.vercel.app/admin — sign in with
-  `ops@bestauto.com.bd` / `BestAuto-Setup-2026`
+  `reviewer@bestauto.com.bd` / `BestAuto-Review-2026`
+
+  This is a **viewer** account, not an administrator. It opens every board, chart and table in the
+  dashboard and can change nothing: the role is enforced on the server, so every mutating endpoint
+  answers 403 rather than the interface merely hiding a button. Publishing the administrator's
+  password in a public repository would have let anyone sign in and rewrite the demo, which is a poor
+  advertisement for judgment on a role that is partly about it. **The administrator credentials are
+  in the covering email**, and the account can also be recreated from scratch on a fresh database via
+  `/setup`.
 - **AI demonstration:** the concierge widget (bottom-right, every page), the matcher on the home
   page, the sandbox at `/admin/ai`, and the brief at the top of `/admin`
 - **Automation:** `/admin/automations` — make a booking on the site, then watch the run appear

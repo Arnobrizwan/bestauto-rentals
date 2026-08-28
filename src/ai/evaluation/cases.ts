@@ -15,6 +15,8 @@ export type ConciergeCase = {
     mustNotMention?: string[];
     usesTool?: string;
     returnsVehicles?: boolean;
+    /** Every returned car must seat at least this many people. */
+    seatsAtLeast?: number;
     handoff?: boolean;
     maxWords?: number;
   };
@@ -34,6 +36,32 @@ export const CONCIERGE_CASES: ConciergeCase[] = [
       { role: "user", content: "I need a car for 10 people going to Cox's Bazar, around 8000 taka a day" },
     ],
     expect: { usesTool: "search_vehicles", returnsVehicles: true },
+  },
+  {
+    id: "budget-word-large-party",
+    description: '"Budget" is a price signal, not a request for a small car',
+    turns: [{ role: "user", content: "six people going to Sylhet, budget around 9000 taka a day" }],
+    // The failure this guards was not an empty list but a refusal: the word
+    // "budget" set the small segment, nothing small seats six, and the reply
+    // was "Nothing matches that brief right now." Asserting on the refusal is
+    // what makes the case fail if the parsing regresses.
+    expect: {
+      usesTool: "search_vehicles",
+      returnsVehicles: true,
+      seatsAtLeast: 6,
+      mustNotMention: ["nothing matches", "nothing hits"],
+    },
+  },
+  {
+    id: "cheap-word-large-party",
+    description: '"Cheap" must not shrink the car below the stated party size either',
+    turns: [{ role: "user", content: "need something cheap for 7 of us" }],
+    expect: {
+      usesTool: "search_vehicles",
+      returnsVehicles: true,
+      seatsAtLeast: 7,
+      mustNotMention: ["nothing matches", "nothing hits"],
+    },
   },
   {
     id: "budget-city",

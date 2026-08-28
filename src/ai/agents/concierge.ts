@@ -36,6 +36,13 @@ const MAX_TOOL_ITERATIONS = 4;
    Slot extraction — shared by both engines so the UI behaves identically.
    =========================================================================== */
 
+/**
+ * The most seats anything in the small segment offers. Party size is checked
+ * against it so an adjective can never filter a large group down to a fleet
+ * that cannot carry them.
+ */
+const SMALL_SEGMENT_MAX_SEATS = 5;
+
 export type Slots = {
   passengers?: number;
   budgetPerDay?: number;
@@ -159,9 +166,19 @@ export function extractSlots(turns: ChatTurn[], previous: Slots = {}): Slots {
   else if (/\bdiesel\b/.test(text)) slots.fuel = "Diesel";
   else if (/\boctane\b/.test(text)) slots.fuel = "Octane";
 
-  if (/\b(small|compact|city car|cheap|budget|economical|sedan|private car)\b/.test(text)) slots.segment = "small";
+  // "cheap" and "budget" are price signals, not size ones. Treating them as a
+  // request for the small fleet meant "six of us, budget 9,000 taka" filtered
+  // down to five-seat cars and returned nothing at all.
+  if (/\b(small|compact|city car|economical|sedan|private car)\b/.test(text)) slots.segment = "small";
   if (/\b(suv|microbus|micro bus|hiace|noah|7 seater|seven seater|big car|large|van)\b/.test(text)) slots.segment = "large";
   if (/\b(luxury|exclusive|wedding|prestige|vip|premium|chauffeur)\b/.test(text)) slots.segment = "exclusive";
+
+  // Party size is a hard constraint; a segment inferred from an adjective is
+  // not. Nothing in the small fleet seats more than five, so a stated party
+  // larger than that always wins over the guess.
+  if (slots.passengers && slots.passengers > SMALL_SEGMENT_MAX_SEATS && slots.segment === "small") {
+    delete slots.segment;
+  }
 
   for (const alias of Object.keys(VEHICLE_ALIASES).sort((a, b) => b.length - a.length)) {
     if (text.includes(alias)) {
@@ -439,10 +456,15 @@ export async function rulesConcierge(
         record("search_vehicles", slots, found.raw);
         cards = found.cards;
 
-        // Branch and budget are softer than party size — drop them before
-        // telling someone we have nothing.
+        // Branch, budget and segment are all softer than party size — drop
+        // them before telling someone we have nothing. Leaving the segment in
+        // meant the recovery path inherited the very guess that caused the
+        // empty result, so it could never actually recover.
         if (!cards.length) {
-          const relaxed = await search({ ...slots, location: undefined, budgetPerDay: undefined }, 3);
+          const relaxed = await search(
+            { ...slots, location: undefined, budgetPerDay: undefined, segment: undefined },
+            3,
+          );
           record("search_vehicles", { relaxed: true }, relaxed.raw);
           cards = relaxed.cards;
         }
@@ -450,11 +472,28 @@ export async function rulesConcierge(
       }
 
       if (!slug) {
+        // Quote the cheapest car that actually seats the party rather than a
+        // hard-coded figure — the fixed "8000 taka" suggestion told anyone who
+        // had already offered more to *raise* their budget to less than that.
+        const affordable = await search({ passengers: slots.passengers }, 8);
+        const cheapest = affordable.cards.reduce<ConciergeVehicleCard | undefined>(
+          (min, car) => (!min || car.pricePerDay < min.pricePerDay ? car : min),
+          undefined,
+        );
+
+        const stretch =
+          cheapest && (!slots.budgetPerDay || cheapest.pricePerDay > slots.budgetPerDay)
+            ? `Stretch to ${formatCurrency(cheapest.pricePerDay)} for the ${cheapest.name}`
+            : null;
+
         return {
-          message:
-            "Nothing matches that brief right now. If you can stretch the budget a little or take a different branch, I'll find you something — which is easier?",
-          vehicles: [],
-          suggestions: ["Raise my budget to 8000 taka", "Try a different branch"],
+          message: cheapest
+            ? `Nothing matches that brief right now. The closest I have is the ${cheapest.name} at ${formatCurrency(cheapest.pricePerDay)} a day — shall I price that up, or would a different branch help?`
+            : "Nothing matches that brief right now. Tell me the party size and a rough daily budget and I'll try again.",
+          vehicles: cheapest ? [cheapest] : [],
+          suggestions: [stretch, "Try a different branch", "Is the driver included?"].filter(
+            (x): x is string => Boolean(x),
+          ),
           toolCalls,
           handoff: false,
         };

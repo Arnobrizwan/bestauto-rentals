@@ -15,8 +15,11 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Middleware has already verified the cookie signature; this is the
   // authoritative check that the account still exists and is active.
+  // The cookie signature already passed at the edge, so arriving here without
+  // an account means the row is gone or deactivated. `stale` tells the login
+  // page to explain that rather than silently showing an empty form.
   const user = await getCurrentAdmin();
-  if (!user) redirect("/login?next=/admin");
+  if (!user) redirect("/login?next=/admin&stale=1");
 
   const funnel = await getLeadFunnel().catch(() => []);
   const hotLeads = funnel.find((f) => f.tier === "hot")?.n ?? 0;

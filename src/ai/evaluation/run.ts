@@ -13,7 +13,21 @@ import { describeEngine, resolveProvider } from "@/ai/provider";
 
 import { CONCIERGE_CASES, QUALIFIER_CASES, RECOMMENDER_CASES } from "./cases";
 
-const PASS_THRESHOLD = 0.85;
+/**
+ * How much failure is tolerated, and why it depends on the engine.
+ *
+ * A hosted model rephrases itself between runs, so a small tolerance stops a
+ * wording change failing the build. The deterministic engine has no such
+ * variance: the same input produces the same answer every time, so any failing
+ * check is a defect rather than noise.
+ *
+ * This distinction is not academic. A real parsing bug — the word "budget"
+ * being read as a request for a small car, so a party of six was told nothing
+ * matched — scored 96.9% and sailed through a flat 85% gate. Under the rules
+ * engine the bar is now every check.
+ */
+const HOSTED_PASS_THRESHOLD = 0.85;
+const RULES_PASS_THRESHOLD = 1;
 
 type Check = { name: string; passed: boolean; detail: string };
 type CaseResult = { suite: string; id: string; description: string; checks: Check[]; latencyMs: number };
@@ -60,6 +74,20 @@ async function runConciergeSuite() {
         name: testCase.expect.returnsVehicles ? "returns vehicles" : "returns no vehicles",
         passed: has === testCase.expect.returnsVehicles,
         detail: `${reply.vehicles.length} returned`,
+      });
+    }
+    if (testCase.expect.seatsAtLeast) {
+      // "Returned something" is too weak an assertion: the bug this guards
+      // against returned nothing, but the near miss returns cars too small.
+      const need = testCase.expect.seatsAtLeast;
+      const tooSmall = reply.vehicles.filter((v) => v.seats < need);
+      checks.push({
+        name: `every car seats at least ${need}`,
+        passed: reply.vehicles.length > 0 && tooSmall.length === 0,
+        detail:
+          reply.vehicles.length === 0
+            ? "no vehicles returned"
+            : `${reply.vehicles.map((v) => `${v.name} (${v.seats})`).join(", ")}`,
       });
     }
     if (testCase.expect.handoff !== undefined) {
@@ -223,10 +251,14 @@ async function main() {
 
   const rate = totalChecks === 0 ? 0 : passedChecks / totalChecks;
   const suites = [...new Set(results.map((r) => r.suite))];
-  console.log(`\n  ${passedChecks}/${totalChecks} checks passed (${(rate * 100).toFixed(1)}%) across ${suites.length} suites`);
-  console.log(`  threshold ${(PASS_THRESHOLD * 100).toFixed(0)}%\n`);
+  const threshold = resolveProvider() ? HOSTED_PASS_THRESHOLD : RULES_PASS_THRESHOLD;
 
-  process.exit(rate >= PASS_THRESHOLD ? 0 : 1);
+  console.log(`\n  ${passedChecks}/${totalChecks} checks passed (${(rate * 100).toFixed(1)}%) across ${suites.length} suites`);
+  console.log(
+    `  threshold ${(threshold * 100).toFixed(0)}% (${resolveProvider() ? "hosted model — wording varies between runs" : "rules engine — deterministic, so every check must pass"})\n`,
+  );
+
+  process.exit(rate >= threshold ? 0 : 1);
 }
 
 main().catch((err) => {

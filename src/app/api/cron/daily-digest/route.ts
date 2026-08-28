@@ -1,5 +1,6 @@
 import { emit } from "@/automation/engine";
 import { formatCurrency } from "@/lib/utils";
+import { requireAdmin } from "@/lib/auth/server";
 import { guard, ok, requireCronAuth } from "@/lib/security/http";
 import { getKpis, resolveRange } from "@/server/repositories/analytics";
 
@@ -35,7 +36,18 @@ export async function GET(req: Request) {
   return run();
 }
 
+/**
+ * The "run it now" button on the Automations page.
+ *
+ * The edge gate only proves a session exists, not what it may do, and firing
+ * the digest writes automation runs and queues outbound messages. That is a
+ * mutation, so it takes the admin role like every other one — a viewer signing
+ * in to look around cannot set the workflow engine running.
+ */
 export async function POST(req: Request) {
+  const forbidden = await requireAdmin({ role: "admin" });
+  if (forbidden) return forbidden;
+
   const blocked = guard(req, "cron-manual", 10);
   if (blocked) return blocked;
   return run();
