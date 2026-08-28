@@ -62,9 +62,9 @@ export const customers = pgTable(
     email: text("email").notNull(),
     phone: text("phone").notNull().default(""),
     city: text("city").notNull().default(""),
-    country: text("country").notNull().default("United Kingdom"),
+    country: text("country").notNull().default("Bangladesh"),
     /** ISO 3166-1 numeric — joins to the world map shapes */
-    countryCode: text("country_code").notNull().default("826"),
+    countryCode: text("country_code").notNull().default("050"),
     avatarSeed: text("avatar_seed").notNull().default("a"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -91,7 +91,7 @@ export const bookings = pgTable(
     total: numeric("total", { precision: 10, scale: 2 }).notNull(),
     /** success | pending | cancelled — mirrors the Figma status pills */
     status: text("status").notNull().default("pending"),
-    paymentMethod: text("payment_method").notNull().default("Stripe"),
+    paymentMethod: text("payment_method").notNull().default("bKash"),
     extras: jsonb("extras").$type<string[]>().notNull().default([]),
     source: text("source").notNull().default("web"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

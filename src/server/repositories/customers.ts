@@ -23,8 +23,8 @@ export async function upsertCustomer(input: {
       email: input.email,
       phone: input.phone ?? "",
       city: input.city ?? "",
-      country: input.country ?? "United Kingdom",
-      countryCode: input.countryCode ?? "826",
+      country: input.country ?? "Bangladesh",
+      countryCode: input.countryCode ?? "050",
       avatarSeed: input.name,
     })
     .returning();

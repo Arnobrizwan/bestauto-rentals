@@ -99,7 +99,7 @@ export async function createBooking(input: CreateBookingInput) {
     email: input.customer.email.trim().toLowerCase(),
     phone: input.customer.phone ? sanitizeText(input.customer.phone, 40) : "",
     city: input.customer.city ? sanitizeText(input.customer.city, 80) : "",
-    country: input.customer.country ?? "United Kingdom",
+    country: input.customer.country ?? "Bangladesh",
   });
 
   const reference = `BA-${Date.now().toString(36).toUpperCase().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
@@ -118,7 +118,7 @@ export async function createBooking(input: CreateBookingInput) {
     extrasTotal: priced.extrasTotal.toFixed(2),
     total: priced.total.toFixed(2),
     status: "success",
-    paymentMethod: input.paymentMethod ?? "Stripe",
+    paymentMethod: input.paymentMethod ?? "bKash",
     extras: priced.extras.map((e) => e.name),
     source: input.source ?? "web",
   });

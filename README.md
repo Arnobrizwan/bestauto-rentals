@@ -63,7 +63,7 @@ npm run db:push     # create the schema
 
 npm run db:seed     # creates no admin; visit /setup to make the first one   # 12 vehicles, 140 customers,
                                                         # ~600 bookings, 42 scored leads, 8 rules
-npm run dev         # sign in at /login with ops@bestauto.co.uk
+npm run dev         # sign in at /login with ops@bestauto.com.bd
 ```
 
 | Script | Purpose |
@@ -73,7 +73,7 @@ npm run dev         # sign in at /login with ops@bestauto.co.uk
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint incl. the React Compiler rules |
 | `npm run db:push` / `db:seed` / `db:reset` | Schema and data |
-| `npm run eval` | **AI evaluation suite** — 50 assertions, exits non-zero below 85% |
+| `npm run eval` | **AI evaluation suite** — 55 assertions, exits non-zero below 85% |
 | `npm run build:map` | Regenerates the world-map paths from the TopoJSON atlas |
 
 ### Environment
@@ -139,11 +139,11 @@ asserts it: **any answer containing a price must have called a tool that could p
 
 ### Evaluation
 
-`npm run eval` runs 50 assertions across 18 golden cases. They assert *behaviour*, not wording, so
+`npm run eval` runs 55 assertions across 21 golden cases. They assert *behaviour*, not wording, so
 the same suite grades the rules engine and any hosted model.
 
 ```
-  50/50 checks passed (100.0%) across 3 suites
+  55/55 checks passed (100.0%) across 3 suites
 ```
 
 The suite found four real defects during development, all fixed and now regression-covered:
@@ -214,7 +214,7 @@ schedule.daily  ─┘
 `adjust_inventory`, `post_webhook`
 
 **Shipped rules:** hot-lead escalation, warm-lead nurture, cold-lead digest, booking confirmation,
-high-value booking review (>£1,000 opens a risk task), cancellation recovery, concierge handoff,
+high-value booking review (>৳50,000 opens an NID verification task), cancellation recovery, concierge handoff,
 daily operations digest.
 
 Rules live in the database, not in code — `/admin/automations` toggles them live, shows every run
@@ -360,6 +360,9 @@ The product is built for Bangladesh, not translated into it.
 - **Branches.** Eleven, weighted to Dhaka (Gulshan, Banani, Uttara, Dhanmondi, Motijheel), plus
   Shahjalal Airport, Chattogram, Sylhet, Khulna, Rajshahi and Cox's Bazar.
 - **Payments.** bKash, Nagad, Rocket, SSLCOMMERZ, cards, bank transfer and cash at handover.
+  `country` and `paymentMethod` are optional on `POST /api/bookings`, so the fallbacks are part of the
+  localisation rather than an afterthought: a booking that omits them is recorded as Bangladesh (ISO `050`)
+  paying by bKash, not as a UK customer on Stripe.
 - **Policy knowledge.** BRTA licences, NID verification, taka deposits, monsoon and waterlogging,
   wedding decoration, and fixed intercity round trips to Cox's Bazar, Sylhet and Bandarban.
 - **Demand curve.** The seed models the real season: the November-to-February wedding and tourist

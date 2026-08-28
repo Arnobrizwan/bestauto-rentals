@@ -134,6 +134,28 @@ export async function GET(req: Request) {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },
       },
+      "/api/auth/setup": {
+        post: {
+          summary: "Create the first administrator",
+          description:
+            "Open only while no admin account exists. Once one does, this returns 409 permanently — it can never mint a second privileged account.",
+          responses: { "200": { description: "Administrator created and signed in" }, "409": errorResponse, "422": errorResponse },
+        },
+      },
+      "/api/auth/login": {
+        post: {
+          summary: "Sign in",
+          description:
+            "Rate limited to five attempts per fifteen minutes per client. A missing account and a wrong password return the same message and run the same PBKDF2 work, so accounts cannot be enumerated by response or by timing.",
+          responses: { "200": { description: "Session cookie issued" }, "401": errorResponse, "429": { description: "Rate limited" } },
+        },
+      },
+      "/api/auth/logout": {
+        post: { summary: "Sign out and clear the session cookie", responses: { "200": { description: "Signed out" } } },
+      },
+      "/api/openapi": {
+        get: { summary: "This document", responses: { "200": { description: "OpenAPI 3.1 specification" } } },
+      },
     },
     "x-ai-tools": TOOL_SPECS.map((t) => ({ name: t.name, description: t.description })),
   });
