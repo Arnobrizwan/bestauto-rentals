@@ -253,6 +253,101 @@ export const adminUsers = pgTable(
   (t) => [uniqueIndex("admin_users_email_idx").on(t.email)],
 );
 
+/* ---------------------------------------------------------------------------
+   Fleet operations — the individual cars behind each model
+--------------------------------------------------------------------------- */
+
+/**
+ * A physical car. `vehicles` is the model a customer books; this is the
+ * registered unit that actually leaves the branch, which is what maintenance,
+ * documents and handovers hang off. Registrations follow the BRTA format
+ * (e.g. "DHAKA METRO GA 15-3421").
+ */
+export const vehicleUnits = pgTable(
+  "vehicle_units",
+  {
+    id: text("id").primaryKey(),
+    vehicleId: text("vehicle_id").notNull(),
+    registration: text("registration").notNull(),
+    /** available | on-hire | maintenance | off-road */
+    status: text("status").notNull().default("available"),
+    branch: text("branch").notNull(),
+    odometerKm: integer("odometer_km").notNull().default(0),
+    acquiredAt: date("acquired_at").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("vehicle_units_registration_idx").on(t.registration),
+    index("vehicle_units_vehicle_idx").on(t.vehicleId),
+    index("vehicle_units_status_idx").on(t.status),
+  ],
+);
+
+/**
+ * Statutory paperwork with an expiry date. In Bangladesh a car cannot legally
+ * carry a paying passenger without a current fitness certificate, tax token,
+ * insurance cover note and — for commercial hire — a route permit, so the
+ * expiry board is an operational necessity rather than a nicety.
+ */
+export const vehicleDocuments = pgTable(
+  "vehicle_documents",
+  {
+    id: text("id").primaryKey(),
+    unitId: text("unit_id").notNull(),
+    /** fitness | tax-token | insurance | route-permit */
+    kind: text("kind").notNull(),
+    reference: text("reference").notNull().default(""),
+    issuedAt: date("issued_at").notNull(),
+    expiresAt: date("expires_at").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("vehicle_documents_unit_idx").on(t.unitId),
+    index("vehicle_documents_expiry_idx").on(t.expiresAt),
+  ],
+);
+
+/** Workshop jobs. An open job is why a unit is off the road. */
+export const maintenanceJobs = pgTable(
+  "maintenance_jobs",
+  {
+    id: text("id").primaryKey(),
+    unitId: text("unit_id").notNull(),
+    /** service | repair | accident | inspection | tyres */
+    kind: text("kind").notNull(),
+    /** open | in-progress | done */
+    status: text("status").notNull().default("open"),
+    summary: text("summary").notNull().default(""),
+    garage: text("garage").notNull().default(""),
+    odometerKm: integer("odometer_km").notNull().default(0),
+    cost: numeric("cost", { precision: 10, scale: 2 }).notNull().default("0"),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [index("maintenance_unit_idx").on(t.unitId), index("maintenance_status_idx").on(t.status)],
+);
+
+/** Discount codes. Percentage or flat taka off, with a validity window. */
+export const coupons = pgTable(
+  "coupons",
+  {
+    id: text("id").primaryKey(),
+    code: text("code").notNull(),
+    description: text("description").notNull().default(""),
+    /** percent | flat */
+    kind: text("kind").notNull().default("percent"),
+    value: numeric("value", { precision: 10, scale: 2 }).notNull(),
+    minDays: integer("min_days").notNull().default(1),
+    startsAt: date("starts_at").notNull(),
+    endsAt: date("ends_at").notNull(),
+    usageLimit: integer("usage_limit").notNull().default(0),
+    usedCount: integer("used_count").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("coupons_code_idx").on(t.code)],
+);
+
 export type AdminUser = typeof adminUsers.$inferSelect;
 
 export type Vehicle = typeof vehicles.$inferSelect;
@@ -266,3 +361,7 @@ export type AutomationRule = typeof automationRules.$inferSelect;
 export type AutomationRun = typeof automationRuns.$inferSelect;
 export type AppEvent = typeof events.$inferSelect;
 export type OutboxMessage = typeof outbox.$inferSelect;
+export type VehicleUnit = typeof vehicleUnits.$inferSelect;
+export type VehicleDocument = typeof vehicleDocuments.$inferSelect;
+export type MaintenanceJob = typeof maintenanceJobs.$inferSelect;
+export type Coupon = typeof coupons.$inferSelect;

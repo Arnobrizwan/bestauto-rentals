@@ -158,3 +158,9 @@ export async function adjustAvailability(vehicleId: string, delta: number) {
     })
     .where(eq(vehicles.id, vehicleId));
 }
+
+/** Inserts a new model. The slug is unique, so a repeat returns null. */
+export async function insertVehicle(row: typeof vehicles.$inferInsert) {
+  const [created] = await db.insert(vehicles).values(row).onConflictDoNothing().returning();
+  return created ?? null;
+}

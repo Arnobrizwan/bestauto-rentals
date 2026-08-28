@@ -101,6 +101,37 @@ const SEASONALITY = [1.15, 1.1, 0.85, 0.95, 0.8, 0.62, 0.58, 0.6, 0.7, 0.85, 1.0
 
 export type SeedBundle = ReturnType<typeof buildSeed>;
 
+const DAY_MS = 86_400_000;
+
+/** Registering cities as they appear on a Bangladeshi plate. */
+const PLATE_CITIES = ["DHAKA METRO", "DHAKA METRO", "DHAKA METRO", "CHATTA METRO", "SYLHET", "KHULNA", "RAJ METRO"] as const;
+const PLATE_SERIES = ["GA", "GHA", "KHA", "CHA", "JA", "TA"] as const;
+
+/** The four papers a commercial hire car must carry current. */
+const DOCUMENT_KINDS = ["fitness", "tax-token", "insurance", "route-permit"] as const;
+
+const MAINTENANCE_KINDS = [
+  { kind: "service", summary: "Scheduled service — oil, filters, brake check", base: 6500 },
+  { kind: "tyres", summary: "Tyre replacement, front pair", base: 18000 },
+  { kind: "repair", summary: "Air-conditioning compressor rebuild", base: 22000 },
+  { kind: "repair", summary: "Suspension bushes after monsoon potholing", base: 14000 },
+  { kind: "accident", summary: "Rear bumper and tail lamp after a low-speed knock", base: 31000 },
+  { kind: "inspection", summary: "Pre-fitness inspection at the BRTA centre", base: 4500 },
+] as const;
+
+const GARAGES = ["Tejgaon Workshop", "Uttara Service Point", "Agrabad Garage", "Authorised Toyota Service"] as const;
+
+const COUPONS = [
+  { code: "EIDSAFAR", description: "Eid travel — flat taka off any booking of three days or more", kind: "flat", value: 3000, minDays: 3, startedDaysAgo: 20, endsInDays: 25, usageLimit: 200 },
+  { code: "BIYE10", description: "Wedding season discount on the exclusive fleet", kind: "percent", value: 10, minDays: 1, startedDaysAgo: 40, endsInDays: 60, usageLimit: 120 },
+  { code: "MONSOON15", description: "Monsoon trough offer to keep the fleet moving", kind: "percent", value: 15, minDays: 2, startedDaysAgo: 90, endsInDays: -10, usageLimit: 300 },
+  { code: "COXWEEK", description: "Seven-day Cox's Bazar round trip", kind: "flat", value: 7500, minDays: 7, startedDaysAgo: 15, endsInDays: 45, usageLimit: 80 },
+  { code: "CORPORATE5", description: "Standing corporate rate for accounts on monthly invoicing", kind: "percent", value: 5, minDays: 1, startedDaysAgo: 200, endsInDays: 160, usageLimit: 500 },
+  { code: "AIRPORT500", description: "Shahjalal Airport pickup credit", kind: "flat", value: 500, minDays: 1, startedDaysAgo: 30, endsInDays: 30, usageLimit: 400 },
+  { code: "FIRSTHIRE", description: "First booking with Best Auto", kind: "percent", value: 8, minDays: 1, startedDaysAgo: 120, endsInDays: 90, usageLimit: 1000 },
+  { code: "MICROBUS12", description: "Microbus group travel, twelve percent off", kind: "percent", value: 12, minDays: 2, startedDaysAgo: 10, endsInDays: 50, usageLimit: 150 },
+] as const;
+
 export function buildSeed(now = new Date()) {
   const rng = makeRng(20260828);
 
@@ -365,5 +396,81 @@ export function buildSeed(now = new Date()) {
     };
   });
 
-  return { vehicles, customers, bookings, leads };
+  /* -------------------------------------------------------------- units */
+  // Every model expands into its registered cars. Registrations follow the
+  // BRTA plate format, with the series letters drawn per registering city.
+  const units = vehicles.flatMap((v) =>
+    Array.from({ length: v.unitsTotal }, (_, u) => {
+      const city = pick(rng, PLATE_CITIES);
+      const series = pick(rng, PLATE_SERIES);
+      return {
+        id: `unit_${v.id.slice(4)}_${u + 1}`,
+        vehicleId: v.id,
+        registration: `${city} ${series} ${between(rng, 11, 39)}-${between(rng, 1000, 9999)}`,
+        status: "available",
+        branch: v.location,
+        odometerKm: between(rng, 12_000, 190_000),
+        acquiredAt: new Date(now.getTime() - between(rng, 200, 1900) * DAY_MS).toISOString().slice(0, 10),
+      };
+    }),
+  );
+
+  /* ---------------------------------------------------------- documents */
+  // Expiry dates are deliberately spread across expired / due / current so the
+  // compliance board has something real to sort, rather than every car being
+  // green. Roughly one unit in six is carrying a lapsed document.
+  const documents = units.flatMap((unit) =>
+    DOCUMENT_KINDS.map((kind, k) => {
+      const roll = rng();
+      const daysOut = roll < 0.08 ? -between(rng, 1, 45) : roll < 0.22 ? between(rng, 1, 30) : between(rng, 31, 330);
+      const expiresAt = new Date(now.getTime() + daysOut * DAY_MS);
+      const issuedAt = new Date(expiresAt.getTime() - 365 * DAY_MS);
+      return {
+        id: `doc_${unit.id.slice(5)}_${k}`,
+        unitId: unit.id,
+        kind,
+        reference: `${kind.slice(0, 3).toUpperCase()}-${between(rng, 100000, 999999)}`,
+        issuedAt: issuedAt.toISOString().slice(0, 10),
+        expiresAt: expiresAt.toISOString().slice(0, 10),
+      };
+    }),
+  );
+
+  /* -------------------------------------------------------- maintenance */
+  const maintenance = units
+    .filter(() => rng() < 0.28)
+    .map((unit, i) => {
+      const kind = pick(rng, MAINTENANCE_KINDS);
+      const openedAt = new Date(now.getTime() - between(rng, 0, 120) * DAY_MS);
+      const done = rng() < 0.62;
+      return {
+        id: `job_${String(i + 1).padStart(4, "0")}`,
+        unitId: unit.id,
+        kind: kind.kind,
+        status: done ? "done" : rng() < 0.5 ? "open" : "in-progress",
+        summary: kind.summary,
+        garage: pick(rng, GARAGES),
+        odometerKm: unit.odometerKm - between(rng, 0, 4000),
+        cost: (kind.base + between(rng, 0, kind.base)).toFixed(2),
+        openedAt,
+        closedAt: done ? new Date(openedAt.getTime() + between(rng, 1, 6) * DAY_MS) : null,
+      };
+    });
+
+  /* ------------------------------------------------------------ coupons */
+  const coupons = COUPONS.map((c, i) => ({
+    id: `cpn_${String(i + 1).padStart(3, "0")}`,
+    code: c.code,
+    description: c.description,
+    kind: c.kind,
+    value: c.value.toFixed(2),
+    minDays: c.minDays,
+    startsAt: new Date(now.getTime() - c.startedDaysAgo * DAY_MS).toISOString().slice(0, 10),
+    endsAt: new Date(now.getTime() + c.endsInDays * DAY_MS).toISOString().slice(0, 10),
+    usageLimit: c.usageLimit,
+    usedCount: between(rng, 0, Math.max(1, Math.floor(c.usageLimit * 0.7))),
+    active: c.endsInDays > 0,
+  }));
+
+  return { vehicles, customers, bookings, leads, units, documents, maintenance, coupons };
 }

@@ -52,6 +52,11 @@ export async function GET(req: Request) {
           ],
           responses: { "200": { description: "Paged vehicles" }, "422": errorResponse },
         },
+        post: {
+          summary: "Add a model to the fleet",
+          description: "Admin role required; a viewer session receives 403. The slug is derived from the name and must be unique.",
+          responses: { "200": { description: "Created" }, "403": errorResponse, "409": errorResponse, "422": errorResponse },
+        },
       },
       "/api/vehicles/{slug}": {
         get: {
@@ -133,6 +138,20 @@ export async function GET(req: Request) {
       "/api/cron/daily-digest": {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },
+      },
+      "/api/team": {
+        get: { summary: "Staff accounts (never returns a password hash)", responses: { "200": { description: "Members" }, "401": errorResponse } },
+        post: {
+          summary: "Create a further staff account",
+          description:
+            "Requires an existing admin session. This is the counterpart to /api/auth/setup closing permanently: every account after the first is created here rather than through a public route. Roles are admin or viewer.",
+          responses: { "200": { description: "Created" }, "403": errorResponse, "409": errorResponse },
+        },
+        patch: {
+          summary: "Activate or deactivate an account",
+          description: "An admin cannot deactivate their own account.",
+          responses: { "200": { description: "Updated" }, "400": errorResponse, "404": errorResponse },
+        },
       },
       "/api/auth/setup": {
         post: {

@@ -17,11 +17,15 @@ import {
   automationRuns,
   bookings,
   conversations,
+  coupons,
   customers,
   events,
   leads,
+  maintenanceJobs,
   messages,
   outbox,
+  vehicleDocuments,
+  vehicleUnits,
   vehicles,
 } from "./schema";
 
@@ -45,12 +49,28 @@ async function main() {
   await db.delete(bookings);
   await db.delete(leads);
   await db.delete(customers);
+  await db.delete(coupons);
+  await db.delete(maintenanceJobs);
+  await db.delete(vehicleDocuments);
+  await db.delete(vehicleUnits);
   await db.delete(vehicles);
 
   const seed = buildSeed();
 
   await chunked(seed.vehicles, 50, (batch) => db.insert(vehicles).values(batch));
   console.log(`  vehicles   ${seed.vehicles.length}`);
+
+  await chunked(seed.units, 100, (batch) => db.insert(vehicleUnits).values(batch));
+  console.log(`  units      ${seed.units.length}`);
+
+  await chunked(seed.documents, 200, (batch) => db.insert(vehicleDocuments).values(batch));
+  console.log(`  documents  ${seed.documents.length}`);
+
+  await chunked(seed.maintenance, 100, (batch) => db.insert(maintenanceJobs).values(batch));
+  console.log(`  jobs       ${seed.maintenance.length}`);
+
+  await db.insert(coupons).values(seed.coupons);
+  console.log(`  coupons    ${seed.coupons.length}`);
 
   await chunked(seed.customers, 100, (batch) => db.insert(customers).values(batch));
   console.log(`  customers  ${seed.customers.length}`);
