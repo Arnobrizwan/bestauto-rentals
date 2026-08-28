@@ -4,6 +4,7 @@ import { AiMatcher } from "@/components/site/ai-matcher";
 import { Deals } from "@/components/site/deals";
 import { SearchPanel } from "@/components/site/search-panel";
 import { HowItWorks, PromoPanels, WhyChooseUs } from "@/components/site/sections";
+import { RegisterSection } from "@/components/site/register";
 import { Testimonials } from "@/components/site/testimonials";
 import type { VehicleCardData } from "@/components/site/vehicle-card";
 import { ButtonLink } from "@/components/ui";
@@ -135,6 +136,7 @@ export default async function HomePage() {
       <WhyChooseUs />
       <PromoPanels />
       <Testimonials />
+      <RegisterSection />
     </>
   );
 }

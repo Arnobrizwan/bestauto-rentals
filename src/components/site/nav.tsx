@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 
 const LINKS = [
+  { href: "/", label: "Home" },
   { href: "/#how-it-works", label: "How it Works" },
   { href: "/cars", label: "Rental Deals" },
   { href: "/#why-us", label: "Why Choose Us" },
@@ -55,17 +56,18 @@ export function SiteNav() {
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <span aria-hidden className="h-5 w-px bg-line" />
           <Link
-            href="/admin"
-            className="text-sm font-medium text-ink-500 underline-offset-4 transition-colors hover:text-ink-900 hover:underline"
+            href="/#register"
+            className="text-sm font-medium text-ink-500 underline underline-offset-4 transition-colors hover:text-ink-900"
           >
-            Admin
+            Register
           </Link>
           <Link
-            href="/cars"
-            className="inline-flex h-10 items-center rounded-full bg-ink-900 px-5 text-sm font-medium text-white transition-colors hover:bg-ink-800"
+            href="/login"
+            className="inline-flex h-10 items-center rounded-full border border-ink-200 bg-white px-5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
           >
-            Book a car
+            Log In
           </Link>
         </div>
 
@@ -100,11 +102,18 @@ export function SiteNav() {
               </Link>
             ))}
             <Link
-              href="/admin"
+              href="/#register"
               onClick={() => setOpen(false)}
               className="rounded-xl px-3 py-3 text-[15px] font-medium text-ink-700 hover:bg-ink-50"
             >
-              Admin dashboard
+              Register
+            </Link>
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="mt-2 inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 text-[15px] font-medium text-ink-900"
+            >
+              Log In
             </Link>
             <Link
               href="/cars"

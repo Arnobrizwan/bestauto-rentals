@@ -8,7 +8,7 @@ const COLUMNS = [
     links: [
       { label: "How it works", href: "/#how-it-works" },
       { label: "Featured", href: "/cars" },
-      { label: "Partnership", href: "/#contact" },
+      { label: "Partnership", href: "/#register" },
     ],
   },
   {
@@ -20,11 +20,11 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Product",
+    title: "Socials",
     links: [
-      { label: "Admin dashboard", href: "/admin" },
-      { label: "AI concierge", href: "/#matcher" },
-      { label: "API health", href: "/api/health" },
+      { label: "Discord", href: "/#register" },
+      { label: "Instagram", href: "/#register" },
+      { label: "Twitter", href: "/#register" },
     ],
   },
 ];

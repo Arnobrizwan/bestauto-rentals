@@ -171,7 +171,7 @@ Three cars or more? Get invoiced monthly.
             </p>
           </div>
           <Link
-            href="/#contact"
+            href="/#register"
             className="relative mt-8 inline-flex h-11 w-fit items-center rounded-full bg-white px-6 text-sm font-semibold text-ink-900 transition-colors hover:bg-brand-400 hover:text-ink-950"
           >
             Talk to us

@@ -19,9 +19,9 @@ function isoIn(days: number) {
 export function SearchPanel({ locations, className }: { locations: string[]; className?: string }) {
   const router = useRouter();
   const id = useId();
-  // Prefer a London branch as the default - it is the busiest and reads better
-  // than whatever happens to sort first alphabetically.
-  const defaultLocation = locations.find((l) => l.startsWith("London")) ?? locations[0] ?? "";
+  // Prefer a Dhaka branch as the default - it is the busiest by a wide margin
+  // and reads better than whatever happens to sort first alphabetically.
+  const defaultLocation = locations.find((l) => l.startsWith("Dhaka")) ?? locations[0] ?? "";
   const [pickupLocation, setPickupLocation] = useState(defaultLocation);
   const [pickupDate, setPickupDate] = useState(isoIn(3));
   const [pickupTime, setPickupTime] = useState("10:00");

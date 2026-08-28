@@ -29,7 +29,7 @@ automation engine** wired through the middle.
 | Clean, reusable code | Repository → service → route → component layering; one design-token file; one `ui/` primitive set |
 | Wireframe → polished website | `/` — every wireframe section is present and redesigned |
 | Vehicle cards + rental search | `/cars` with faceted filtering, `/cars/[slug]` with a live booking form |
-| Interactions and functionality | Real bookings that persist, reveal-on-scroll, testimonial carousel, favourites, AI matcher, chat concierge |
+| Interactions and functionality | Real bookings that persist, a Register form that feeds the AI-scored lead pipeline, reveal-on-scroll, testimonial carousel, favourites, AI matcher, chat concierge |
 | **AI feature** | Four agents — see [AI layer](#ai-layer) |
 | **API / backend** | 16 REST endpoints, Zod-validated, rate limited — see [API](#api) |
 | **Automation workflow** | 8-rule event-driven engine with an audit trail — see [Automation](#automation) |
@@ -312,6 +312,24 @@ the AI concierge, and get identical scoring and automation from both.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
   replacing the `localStorage`-in-`useEffect` pattern with `useSyncExternalStore`, hoisting a
   component out of a render body, and server-rendering the AI brief instead of fetching it on mount.
+
+### Wireframe coverage
+
+Every section of the supplied wireframe is implemented, in the same order:
+
+| Wireframe | Built as |
+|---|---|
+| Nav: Home · How it Work · Rental Detals · Why Choose Us · Testimonial \| Register \| Log In | Same, with Register opening a real account request and Log In going to the staff sign-in |
+| Hero + pick-up / drop-off search panel | Hero with a working search that pushes criteria into `/cars` as linkable query params |
+| How it works — 3 steps with the connecting curve | Same, curve drawn as an inline SVG, hidden when the steps stack |
+| Most popular car rental deals — 4 tabs, 8 cards, "Show more car", car count | Tabs hit `/api/vehicles` live; cards carry a working favourite toggle |
+| Why choose us — image + 3 features | Same |
+| Two panels | Corporate accounts and the long-rental discount ladder |
+| Trusted by Thousands of Happy Customer — carousel, dots, arrows | Same, auto-advancing and pausing on hover or focus |
+| Footer — logo, vision, socials, About / Community / Socials, legal bar | Same |
+
+The wireframe's two empty panels and the "Register" link were the only places it left the content open;
+both are filled with something that does real work rather than a placeholder.
 
 ---
 
