@@ -24,7 +24,17 @@ const searchVehiclesInput = z.object({
   transmission: z.enum(["Automatic", "Manual"]).optional(),
   fuel: z.enum(["Petrol", "Octane", "Hybrid", "Diesel"]).optional(),
   bodyType: z.string().optional(),
-  location: z.string().optional().describe("Branch name, e.g. 'Dhaka Gulshan'"),
+  // No example value here on purpose: a hosted model copied the sample branch
+  // into real calls, so "six people going to Sylhet" was searched as Dhaka
+  // Gulshan and matched nothing. The description also has to separate the
+  // branch a car is collected from — the only thing this filters on — from the
+  // place the customer is driving to, which the model was conflating.
+  location: z
+    .string()
+    .optional()
+    .describe(
+      "Pick-up branch, and only when the customer names the branch they want to collect from. This is not their destination: 'going to Sylhet' or 'trip to Cox's Bazar' names where they are driving, not where they collect the car, so leave this unset for those. Omit it to search every branch.",
+    ),
   limit: z.number().int().min(1).max(8).optional(),
 });
 
