@@ -1,0 +1,140 @@
+import Image from "next/image";
+
+import { AiMatcher } from "@/components/site/ai-matcher";
+import { Deals } from "@/components/site/deals";
+import { SearchPanel } from "@/components/site/search-panel";
+import { HowItWorks, PromoPanels, WhyChooseUs } from "@/components/site/sections";
+import { Testimonials } from "@/components/site/testimonials";
+import type { VehicleCardData } from "@/components/site/vehicle-card";
+import { ButtonLink } from "@/components/ui";
+import { listFacets, listVehicles } from "@/server/repositories/vehicles";
+
+export const dynamic = "force-dynamic";
+
+const TRUST = [
+  { value: "11", label: "UK branches" },
+  { value: "24/7", label: "AI concierge" },
+  { value: "48h", label: "Free cancellation" },
+  { value: "4.8", label: "Average rating" },
+];
+
+export default async function HomePage() {
+  const [{ items, total }, facets] = await Promise.all([
+    listVehicles({ sort: "popular", limit: 8 }),
+    listFacets(),
+  ]);
+
+  const deals: VehicleCardData[] = items.map((v) => ({
+    slug: v.slug,
+    name: v.name,
+    brand: v.brand,
+    bodyType: v.bodyType,
+    transmission: v.transmission,
+    fuel: v.fuel,
+    seats: v.seats,
+    bags: v.bags,
+    pricePerDay: Number(v.pricePerDay),
+    imageUrl: v.imageUrl,
+    rating: v.rating,
+    reviewCount: v.reviewCount,
+    segment: v.segment,
+    location: v.location,
+    unitsAvailable: v.unitsAvailable,
+  }));
+
+  return (
+    <>
+      {/* ------------------------------------------------------------ Hero */}
+      <section className="relative overflow-hidden bg-canvas pt-18">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(48rem 28rem at 88% 8%, rgba(255,159,67,0.16), transparent 62%), radial-gradient(40rem 24rem at 4% 40%, rgba(9,44,76,0.06), transparent 60%)",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-7xl px-5 pt-14 lg:px-8 lg:pt-20">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.08fr_1fr] lg:gap-12">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-[13px] font-medium text-ink-500 shadow-card">
+                <span className="size-1.5 rounded-full bg-success" />
+                100% Trusted Car rental platform in the UK
+              </p>
+
+              <h1 className="mt-6 font-display text-[38px] leading-[1.06] font-bold tracking-tight text-ink-900 uppercase sm:text-[52px] lg:text-[44px] xl:text-[54px]">
+                Fast and easy way to
+                <br />
+                <span className="text-brand-400">rent a car</span>
+              </h1>
+
+              <p className="mt-6 max-w-lg text-[16px] leading-relaxed text-ink-400">
+                Our car rental online booking system is designed to meet the specific needs of car rental business
+                owners. Easy to use, honest about price, and quick to answer.
+              </p>
+
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                <ButtonLink href="/cars" size="lg">
+                  Booking Now
+                </ButtonLink>
+                <ButtonLink href="#deals" variant="ghost" size="lg">
+                  See all cars
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M5 12h14m0 0-6-6m6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </ButtonLink>
+              </div>
+
+              <dl className="mt-12 grid max-w-lg grid-cols-2 gap-6 border-t border-line pt-8 sm:grid-cols-4">
+                {TRUST.map((stat) => (
+                  <div key={stat.label}>
+                    <dt className="font-display text-2xl font-bold text-ink-900">{stat.value}</dt>
+                    <dd className="mt-0.5 text-[13px] text-ink-400">{stat.label}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            <div className="relative">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-3xl rounded-tr-[80px] bg-ink-100 lg:aspect-[5/4]">
+                <Image
+                  src="https://images.unsplash.com/photo-1503376780353-7e6692767b70"
+                  alt="A Porsche Panamera 4S from the Best Auto fleet"
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 92vw, 52vw"
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-950/25 to-transparent" />
+              </div>
+
+              <div className="absolute -bottom-5 -left-3 flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 shadow-lift sm:-left-6">
+                <span className="grid size-10 place-items-center rounded-xl bg-success-soft text-success">
+                  <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span>
+                  <span className="block font-display text-sm font-semibold text-ink-900">{total} cars ready now</span>
+                  <span className="block text-[12px] text-ink-400">Live availability, checked on every answer</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-20 pb-16 lg:pt-24">
+            <SearchPanel locations={facets.locations} />
+          </div>
+        </div>
+      </section>
+
+      <HowItWorks />
+      <Deals initial={deals} initialTotal={total} />
+      <AiMatcher />
+      <WhyChooseUs />
+      <PromoPanels />
+      <Testimonials />
+    </>
+  );
+}
