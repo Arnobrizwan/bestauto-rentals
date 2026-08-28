@@ -88,6 +88,13 @@ export function UtilisationBars({
   );
 }
 
+export const SOURCE_LABELS: Record<string, string> = {
+  web: "Web",
+  "ai-concierge": "AI concierge",
+  phone: "Phone",
+  partner: "Partner",
+};
+
 export function SourceBars({ data }: { data: { source: string; n: number; revenue: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.n));
   if (!data.length) return <p className="py-10 text-center text-sm text-ink-400">No attributed bookings.</p>;
@@ -96,8 +103,8 @@ export function SourceBars({ data }: { data: { source: string; n: number; revenu
     <ul className="space-y-3.5">
       {data.map((row) => (
         <li key={row.source} className="flex items-center gap-3">
-          <span className="w-24 shrink-0 truncate text-[13px] text-ink-500 capitalize">
-            {row.source.replace(/-/g, " ")}
+          <span className="w-24 shrink-0 truncate text-[13px] text-ink-500">
+            {SOURCE_LABELS[row.source] ?? row.source.replace(/-/g, " ")}
           </span>
           <div className="h-7 flex-1 overflow-hidden rounded-md bg-ink-50">
             <div

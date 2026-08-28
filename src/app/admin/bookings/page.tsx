@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { FilterTabs, PageHeader, Pagination, SortMenu, TableSearch } from "@/components/admin/table";
+import { SOURCE_LABELS } from "@/components/charts/mini";
 import { Badge, Card, EmptyState, Skeleton, type BadgeTone } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { listBookings } from "@/server/repositories/bookings";
@@ -116,7 +117,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-[13px] text-ink-500 capitalize">{b.source.replace(/-/g, " ")}</span>
+                      <span className="text-[13px] text-ink-500">{SOURCE_LABELS[b.source] ?? b.source}</span>
                       <span className="block text-[12px] text-ink-400">{b.paymentMethod}</span>
                     </td>
                     <td className="px-5 py-3.5">

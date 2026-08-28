@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { SOURCE_LABELS } from "@/components/charts/mini";
 import { Badge, type BadgeTone } from "@/components/ui";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -97,7 +98,7 @@ export function LeadRow({ lead }: { lead: LeadView }) {
           </Badge>
         </td>
         <td className="px-5 py-3.5 text-[13px] text-ink-500 capitalize">{lead.intent}</td>
-        <td className="px-5 py-3.5 text-[13px] text-ink-500 capitalize">{lead.source.replace(/-/g, " ")}</td>
+        <td className="px-5 py-3.5 text-[13px] text-ink-500">{SOURCE_LABELS[lead.source] ?? lead.source}</td>
         <td className="px-5 py-3.5 text-[13px] text-ink-500">{formatDate(lead.createdAt)}</td>
         <td className="px-5 py-3.5 text-right">
           <select
