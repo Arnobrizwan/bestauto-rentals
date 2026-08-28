@@ -9,6 +9,7 @@ automation engine** wired through the middle.
 |---|---|
 | **Live site** | **https://bestauto-rentals.vercel.app** |
 | **Admin dashboard** | **https://bestauto-rentals.vercel.app/admin** |
+| **Admin sign-in** | `ops@bestauto.co.uk` / `Pylot-Review-2026` |
 | **API reference** | https://bestauto-rentals.vercel.app/api/openapi |
 | **Health check** | https://bestauto-rentals.vercel.app/api/health |
 | **Repository** | https://github.com/Arnobrizwan/bestauto-rentals |
@@ -31,6 +32,7 @@ automation engine** wired through the middle.
 | **AI feature** | Four agents — see [AI layer](#ai-layer) |
 | **API / backend** | 16 REST endpoints, Zod-validated, rate limited — see [API](#api) |
 | **Automation workflow** | 8-rule event-driven engine with an audit trail — see [Automation](#automation) |
+| Access control | The dashboard and every admin API route are behind authentication — see [Authentication](#authentication) |
 
 ---
 
@@ -57,8 +59,10 @@ npm install
 echo 'DATABASE_URL="postgresql://..."' > .env.local
 
 npm run db:push     # create the schema
-npm run db:seed     # 14 vehicles, 140 customers, ~530 bookings, 42 scored leads, 8 rules
-npm run dev
+
+# The seed will not invent an admin password for you.
+SEED_ADMIN_PASSWORD='choose-something' npm run db:seed
+npm run dev         # sign in at /login with ops@bestauto.co.uk
 ```
 
 | Script | Purpose |
@@ -81,10 +85,13 @@ npm run dev
 | `ANTHROPIC_MODEL` / `OPENAI_MODEL` | no | Override the default model id |
 | `SLACK_WEBHOOK_URL` | no | Makes `notify_slack` actions deliver for real |
 | `RESEND_API_KEY` | no | Marks queued email as sent |
+| `SESSION_SECRET` | **in production** | 32+ char secret signing admin session cookies. The app refuses to start a production session without it |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | seed only | The admin account `npm run db:seed` creates. `SEED_ADMIN_PASSWORD` has no default — the seed fails without it rather than creating a known password |
+| `SHOW_DEMO_CREDENTIALS` + `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | no | Renders a click-to-fill credentials panel on the login page. **Off unless explicitly set to `true`** — it is on for this review deployment only |
 | `CRON_SECRET` | no | Required as `Bearer` on the scheduled endpoint when set |
 | `WEBHOOK_SECRET_<SOURCE>` | no | Enables HMAC-SHA256 verification for that webhook source |
 
-**The app runs fully with only `DATABASE_URL`.** See the next section for why.
+**The AI layer runs fully with only `DATABASE_URL`.** See [AI layer](#ai-layer) for why.
 
 ---
 
@@ -143,6 +150,39 @@ The suite found four real defects during development, all fixed and now regressi
 age questions routing to vehicle search instead of policy; `"next month"` being double-counted as
 both a firm date and a timeframe; the matcher padding a shortlist with cars too small for the party;
 and `"family of 6"` not parsing as a party size at all.
+
+---
+
+## Authentication
+
+`/admin` and every admin API route are behind a real session, not a shared link.
+
+**Credentials.** Passwords are hashed with **PBKDF2-HMAC-SHA256, 210,000 iterations** and a per-user
+16-byte salt, via Web Crypto — no native dependency, and the same code runs in both runtimes.
+Verification is timing-safe.
+
+**Sessions.** A signed cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in production, 8-hour expiry)
+carrying HMAC-SHA256-signed claims. Two layers check it:
+
+- **`src/proxy.ts`** (Next 16's renamed middleware hook) verifies the signature and expiry at the
+  edge on every admin request. No database round trip, so navigation stays fast.
+- **The admin layout** then loads the account from the database, so deleting or deactivating a user
+  removes their access on the next page view rather than at cookie expiry.
+
+**What is protected.** Everything under `/admin`, plus `/api/analytics`, `/api/automations/*`,
+`/api/ai/insights`, `/api/ai/qualify`, and — by method — `GET`/`PATCH` on `/api/leads`, `GET` on
+`/api/bookings`, and `POST` on the cron endpoint. The public site keeps what it needs: browsing the
+fleet, `POST /api/bookings`, `POST /api/leads`, and the concierge. Mutations additionally require the
+`admin` role, not merely a valid session.
+
+**Hardening.** Login is rate limited to five attempts per fifteen minutes per client. A missing
+account and a wrong password return the same message and run the same PBKDF2 work, so accounts cannot
+be enumerated by response or by timing. The post-login redirect only accepts same-origin paths.
+Forged signatures, tampered payloads and expired cookies are all rejected — verified in testing.
+
+**For this review deployment** the login page shows a click-to-fill credentials panel. That is gated
+behind `SHOW_DEMO_CREDENTIALS=true` and is off by default, so a real deployment never advertises a
+way in. Unset it and the panel disappears with no other change.
 
 ---
 
@@ -206,6 +246,8 @@ GET    /api/automations                rules, runs, events, outbox, stats
 PATCH  /api/automations/{id}           enable/disable a rule
 POST   /api/webhooks/{source}          inbound receiver
 GET|POST /api/cron/daily-digest        scheduled job
+POST   /api/auth/login                 sign in (rate limited 5 / 15 min)
+POST   /api/auth/logout                sign out
 GET    /api/openapi                    this spec
 ```
 
@@ -241,7 +283,9 @@ src/
 │   ├── repositories/    all SQL lives here
 │   └── services/        booking, lead intake, insight snapshot
 ├── components/          ui primitives, site sections, admin, charts
+├── proxy.ts             edge auth gate (Next 16's renamed middleware)
 └── lib/
+    ├── auth/            password hashing, session signing, server-side guards
     ├── security/        rate limiting, validation, sanitisation, cron auth
     └── observability/   structured logger with credential redaction
 ```
@@ -288,8 +332,9 @@ rings, `aria-pressed`/`aria-expanded`/`role="switch"` on stateful controls, and 
 
 Worth stating plainly rather than leaving to be discovered:
 
-- **No authentication.** `/admin` is open so it can be reviewed without credentials. In production
-  this sits behind auth and the admin routes get role checks.
+- **Single-factor auth, no self-service.** Sessions are stateless signed cookies, which means signing
+  out on one device does not invalidate a session already issued to another before it expires. There
+  is no password reset, no MFA, and accounts are created by the seed rather than an invite flow.
 - **Rate limiting is in-process.** Fine for a single region; multi-region needs Redis behind the same
   interface (`src/lib/security/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
@@ -303,7 +348,8 @@ Worth stating plainly rather than leaving to be discovered:
 
 - **Live site:** https://bestauto-rentals.vercel.app
 - **Repository:** https://github.com/Arnobrizwan/bestauto-rentals
-- **Admin dashboard:** https://bestauto-rentals.vercel.app/admin
+- **Admin dashboard:** https://bestauto-rentals.vercel.app/admin — sign in with
+  `ops@bestauto.co.uk` / `Pylot-Review-2026` (the login page also offers click-to-fill)
 - **AI demonstration:** the concierge widget (bottom-right, every page), the matcher on the home
   page, the sandbox at `/admin/ai`, and the brief at the top of `/admin`
 - **Automation:** `/admin/automations` — make a booking on the site, then watch the run appear

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { describeEngine, resolveProvider } from "@/ai/provider";
 import { AdminShell } from "@/components/admin/shell";
+import { getCurrentAdmin } from "@/lib/auth/server";
 import { getLeadFunnel } from "@/server/repositories/leads";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +14,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Middleware has already verified the cookie signature; this is the
+  // authoritative check that the account still exists and is active.
+  const user = await getCurrentAdmin();
+  if (!user) redirect("/login?next=/admin");
+
   const funnel = await getLeadFunnel().catch(() => []);
   const hotLeads = funnel.find((f) => f.tier === "hot")?.n ?? 0;
 
   return (
-    <AdminShell engine={describeEngine(resolveProvider())} hotLeads={hotLeads}>
+    <AdminShell engine={describeEngine(resolveProvider())} hotLeads={hotLeads} user={user}>
       {children}
     </AdminShell>
   );

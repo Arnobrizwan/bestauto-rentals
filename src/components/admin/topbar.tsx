@@ -20,10 +20,12 @@ export function AdminTopbar({
   onMenu,
   engine,
   notifications,
+  user,
 }: {
   onMenu: () => void;
   engine: { engine: string; model: string; hosted: boolean };
   notifications: number;
+  user: { name: string; email: string; role: string };
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -114,8 +116,16 @@ export function AdminTopbar({
           )}
         </Link>
 
-        <span className="grid size-9 place-items-center rounded-full bg-ink-900 font-admin text-[12px] font-bold text-white">
-          MW
+        <span
+          title={`${user.name} (${user.email})`}
+          className="grid size-9 place-items-center rounded-full bg-ink-900 font-admin text-[12px] font-bold text-white"
+        >
+          {user.name
+            .split(" ")
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase()}
         </span>
       </div>
     </header>

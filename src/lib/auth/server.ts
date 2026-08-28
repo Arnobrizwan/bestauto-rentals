@@ -1,0 +1,40 @@
+import { cookies } from "next/headers";
+
+import { fail } from "@/lib/security/http";
+import { findAdminById } from "@/server/repositories/admin-users";
+
+import { SESSION_COOKIE, readSessionToken, type SessionClaims } from "./session";
+
+/** Reads and verifies the session cookie. Signature only — no database hit. */
+export async function getSessionClaims(): Promise<SessionClaims | null> {
+  const store = await cookies();
+  return readSessionToken(store.get(SESSION_COOKIE)?.value);
+}
+
+/**
+ * Full check for server components: verifies the cookie *and* confirms the
+ * account still exists and is active, so revoking access does not have to wait
+ * for the cookie to expire.
+ */
+export async function getCurrentAdmin() {
+  const claims = await getSessionClaims();
+  if (!claims) return null;
+
+  const user = await findAdminById(claims.sub);
+  if (!user || !user.active) return null;
+
+  return { id: user.id, email: user.email, name: user.name, role: user.role as SessionClaims["role"] };
+}
+
+/**
+ * Guard for route handlers. Returns a 401/403 response to return early with,
+ * or null when the caller is allowed through.
+ */
+export async function requireAdmin(options: { role?: "admin" } = {}) {
+  const claims = await getSessionClaims();
+  if (!claims) return fail(401, "Authentication required.");
+  if (options.role === "admin" && claims.role !== "admin") {
+    return fail(403, "This action requires an admin account.");
+  }
+  return null;
+}

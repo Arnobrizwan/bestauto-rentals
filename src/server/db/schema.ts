@@ -234,6 +234,27 @@ export const countryTargets = pgTable("country_targets", {
   periodStart: date("period_start").notNull(),
 });
 
+/* ---------------------------------------------------------------------------
+   Admin accounts
+--------------------------------------------------------------------------- */
+export const adminUsers = pgTable(
+  "admin_users",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    name: text("name").notNull(),
+    /** pbkdf2-sha256$<iterations>$<salt>$<hash> */
+    passwordHash: text("password_hash").notNull(),
+    role: text("role").notNull().default("admin"),
+    active: boolean("active").notNull().default(true),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("admin_users_email_idx").on(t.email)],
+);
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+
 export type Vehicle = typeof vehicles.$inferSelect;
 export type NewVehicle = typeof vehicles.$inferInsert;
 export type Customer = typeof customers.$inferSelect;

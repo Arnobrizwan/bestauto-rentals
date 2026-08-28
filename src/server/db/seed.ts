@@ -7,10 +7,12 @@
  */
 import { rulesQualify } from "@/ai/agents/lead-qualifier";
 import { DEFAULT_RULES } from "@/automation/rules";
+import { hashPassword } from "@/lib/auth/password";
 
 import { db } from "./client";
 import { buildSeed } from "./seed-data";
 import {
+  adminUsers,
   automationRules,
   automationRuns,
   bookings,
@@ -39,6 +41,7 @@ async function main() {
   await db.delete(outbox);
   await db.delete(events);
   await db.delete(automationRules);
+  await db.delete(adminUsers);
   await db.delete(bookings);
   await db.delete(leads);
   await db.delete(customers);
@@ -84,6 +87,24 @@ async function main() {
   console.log(
     `  leads      ${scoredLeads.length} (${scoredLeads.filter((l) => l.tier === "hot").length} hot)`,
   );
+
+  // Admin account. Credentials come from the environment so a real deployment
+  // never inherits a password that is written down in the repository.
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "ops@bestauto.co.uk").toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error(
+      "SEED_ADMIN_PASSWORD is required so the seed never creates an account with a default password.",
+    );
+  }
+  await db.insert(adminUsers).values({
+    id: "adm_001",
+    email: adminEmail,
+    name: process.env.SEED_ADMIN_NAME ?? "Mike Witzel",
+    passwordHash: await hashPassword(adminPassword),
+    role: "admin",
+  });
+  console.log(`  admin      1 (${adminEmail})`);
 
   await db.insert(automationRules).values(
     DEFAULT_RULES.map((r) => ({

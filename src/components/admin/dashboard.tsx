@@ -68,7 +68,15 @@ function rangeQuery(range: RangeState) {
   return params.toString();
 }
 
-export function Dashboard({ initial, initialInsights }: { initial: Analytics; initialInsights: Insights }) {
+export function Dashboard({
+  initial,
+  initialInsights,
+  userName,
+}: {
+  initial: Analytics;
+  initialInsights: Insights;
+  userName: string;
+}) {
   const [range, setRange] = useState<RangeState>({ preset: "30d" });
   const [data, setData] = useState<Analytics>(initial);
   const [loading, setLoading] = useState(false);
@@ -124,7 +132,7 @@ export function Dashboard({ initial, initialInsights }: { initial: Analytics; in
       <Card className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-admin text-lg font-bold text-ink-900">
-            <span aria-hidden>👋</span> Hi Mike Witzel,{" "}
+            <span aria-hidden>👋</span> Hi {userName.split(" ")[0]},{" "}
             <span className="font-normal text-ink-400">here&apos;s what&apos;s happening with your store today.</span>
           </p>
         </div>

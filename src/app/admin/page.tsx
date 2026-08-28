@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { generateInsights } from "@/ai/agents/ops-analyst";
 import { Dashboard, type Analytics } from "@/components/admin/dashboard";
+import { getCurrentAdmin } from "@/lib/auth/server";
 import { buildOpsSnapshot } from "@/server/services/insights";
 import {
   getBestSellers,
@@ -25,6 +26,7 @@ export const metadata: Metadata = { title: "Dashboard" };
  * re-fetches through the same API the rest of the product uses.
  */
 export default async function AdminDashboardPage() {
+  const admin = await getCurrentAdmin();
   const range = resolveRange("30d");
   const spanDays = Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000);
   const grain = spanDays > 120 ? "month" : spanDays > 31 ? "week" : "day";
@@ -53,5 +55,5 @@ export default async function AdminDashboardPage() {
     sourceMix,
   };
 
-  return <Dashboard initial={initial} initialInsights={insights} />;
+  return <Dashboard initial={initial} initialInsights={insights} userName={admin?.name ?? "there"} />;
 }

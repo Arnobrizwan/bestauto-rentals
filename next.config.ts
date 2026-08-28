@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Do not generate AGENTS.md / CLAUDE.md into the repo on every dev run.
+  agentRules: false,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
     formats: ["image/avif", "image/webp"],

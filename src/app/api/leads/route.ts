@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { requireAdmin } from "@/lib/auth/server";
 import { fail, guard, ok, readJson } from "@/lib/security/http";
 import { listLeads, updateLeadStatus } from "@/server/repositories/leads";
 import { createLead } from "@/server/services/leads";
@@ -69,6 +70,9 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const unauthorised = await requireAdmin({ role: "admin" });
+  if (unauthorised) return unauthorised;
+
   const blocked = guard(req, "leads-patch", 60);
   if (blocked) return blocked;
 

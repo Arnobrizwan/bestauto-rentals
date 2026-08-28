@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { requireAdmin } from "@/lib/auth/server";
 import { fail, guard, ok, readJson } from "@/lib/security/http";
 import { setRuleEnabled } from "@/server/repositories/automation";
 
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
 const schema = z.object({ enabled: z.boolean() });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorised = await requireAdmin({ role: "admin" });
+  if (unauthorised) return unauthorised;
+
   const blocked = guard(req, "automations-patch", 40);
   if (blocked) return blocked;
 

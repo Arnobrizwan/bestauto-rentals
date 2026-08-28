@@ -7,15 +7,18 @@ import { Logo } from "@/components/site/logo";
 import { cn } from "@/lib/utils";
 
 import { NAV_GROUPS } from "./nav-config";
+import { SignOutButton } from "./sign-out";
 
 export function AdminSidebar({
   open,
   onClose,
   hotLeads,
+  user,
 }: {
   open: boolean;
   onClose: () => void;
   hotLeads: number;
+  user: { name: string; email: string; role: string };
 }) {
   const pathname = usePathname();
 
@@ -87,6 +90,20 @@ export function AdminSidebar({
         </nav>
 
         <div className="shrink-0 border-t border-line p-3">
+          <div className="mb-2 flex items-center gap-2.5 rounded-lg bg-canvas px-3 py-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-900 font-admin text-[11px] font-bold text-white">
+              {user.name
+                .split(" ")
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join("")
+                .toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-admin text-[13px] font-bold text-ink-900">{user.name}</span>
+              <span className="block truncate text-[11px] text-ink-400 capitalize">{user.role}</span>
+            </span>
+          </div>
           <Link
             href="/"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 font-admin text-[14px] font-semibold text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-900"
@@ -96,6 +113,7 @@ export function AdminSidebar({
             </svg>
             Back to site
           </Link>
+          <SignOutButton />
         </div>
       </aside>
     </>
