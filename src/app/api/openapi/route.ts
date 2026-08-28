@@ -111,7 +111,8 @@ export async function GET(req: Request) {
       "/api/ai/chat": {
         post: {
           summary: "AI concierge turn",
-          description: "Stateless per request; the whole transcript is sent. Returns the reply, vehicle cards and the tools used.",
+          description:
+            "Takes the session id and the new user turn only. History is read back from the database by session, so a caller cannot assert what was previously said — a forged assistant turn claiming a price the fleet never quoted is not expressible. Returns the reply, vehicle cards and the tools used.",
           responses: { "200": { description: "Reply" }, "422": errorResponse, "429": { description: "Rate limited" } },
         },
       },

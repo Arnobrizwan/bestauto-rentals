@@ -105,13 +105,10 @@ export function Concierge() {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          sessionId: sessionRef.current,
-          messages: history
-            .filter((m) => m.id !== "opener")
-            .slice(-16)
-            .map((m) => ({ role: m.role, content: m.content })),
-        }),
+        // Only the new turn. The server reads the conversation back from the
+        // database by session, so it is not the browser's job to say what was
+        // already said.
+        body: JSON.stringify({ sessionId: sessionRef.current, message: trimmed }),
       });
 
       if (!res.ok) {

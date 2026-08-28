@@ -479,6 +479,13 @@ the AI concierge, and get identical scoring and automation from both.
   `searchParams`, which is what makes a filtered fleet URL shareable. Availability on a cached card
   can be five minutes stale, which is safe because it was never authoritative — `POST /api/bookings`
   re-checks it — and publishing a vehicle revalidates the fleet paths immediately.
+- **The conversation is the server's, not the browser's.** `POST /api/ai/chat` takes a session id and
+  the new user turn; the history it reasons over is read back from the `messages` table. It used to
+  accept the whole transcript from the client, which made the browser the authority on what had
+  already been said — a forged assistant turn could assert a price the fleet never quoted. Tested,
+  the model re-checked its tools and contradicted the forgery, but that was the model choosing well
+  rather than the architecture preventing it. Now the only thing a caller can introduce is their own
+  next sentence.
 - **URL as state.** Every filter, sort and page writes to the query string, so results are
   shareable, back-button-correct and server-rendered.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
