@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { FleetFilters, SortSelect } from "@/components/site/fleet-filters";
 import { VehicleCard, type VehicleCardData } from "@/components/site/vehicle-card";
 import { EmptyState, Skeleton } from "@/components/ui";
+import { formatDate } from "@/lib/utils";
 import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 
 export const dynamic = "force-dynamic";
@@ -99,8 +100,8 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
               <svg viewBox="0 0 24 24" className="size-4 text-brand-400" fill="none" stroke="currentColor" strokeWidth="1.7">
                 <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M8 3v4M16 3v4M4 11h16" />
               </svg>
-              {new Date(pickup).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} &rarr;{" "}
-              {new Date(dropoff).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              {formatDate(pickup, { day: "numeric", month: "short" })} &rarr;{" "}
+              {formatDate(dropoff, { day: "numeric", month: "short" })}
               {filters.location ? ` · ${filters.location}` : ""}
             </p>
           )}
