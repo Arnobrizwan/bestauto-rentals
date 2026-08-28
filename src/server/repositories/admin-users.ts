@@ -1,7 +1,27 @@
-import { eq, sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db/client";
 import { adminUsers, type AdminUser } from "@/server/db/schema";
+
+/** How many admin accounts exist. Gates the one-time setup flow. */
+export async function countAdmins() {
+  const [row] = await db.select({ n: count() }).from(adminUsers);
+  return row?.n ?? 0;
+}
+
+export async function createAdmin(input: { email: string; name: string; passwordHash: string }) {
+  const [row] = await db
+    .insert(adminUsers)
+    .values({
+      id: `adm_${crypto.randomUUID().slice(0, 12)}`,
+      email: input.email.trim().toLowerCase(),
+      name: input.name,
+      passwordHash: input.passwordHash,
+      role: "admin",
+    })
+    .returning();
+  return row;
+}
 
 export async function findAdminByEmail(email: string): Promise<AdminUser | null> {
   const [row] = await db

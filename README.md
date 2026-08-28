@@ -9,7 +9,7 @@ automation engine** wired through the middle.
 |---|---|
 | **Live site** | **https://bestauto-rentals.vercel.app** |
 | **Admin dashboard** | **https://bestauto-rentals.vercel.app/admin** |
-| **Admin sign-in** | `ops@bestauto.co.uk` / `Pylot-Review-2026` |
+| **Admin sign-in** | `ops@bestauto.com.bd` / `BestAuto-Setup-2026` |
 | **Market** | Bangladesh — BDT (৳) with lakh/crore grouping, 11 branches, chauffeur-included pricing |
 | **API reference** | https://bestauto-rentals.vercel.app/api/openapi |
 | **Health check** | https://bestauto-rentals.vercel.app/api/health |
@@ -61,8 +61,7 @@ echo 'DATABASE_URL="postgresql://..."' > .env.local
 
 npm run db:push     # create the schema
 
-# The seed will not invent an admin password for you.
-SEED_ADMIN_PASSWORD='choose-something' npm run db:seed   # 12 vehicles, 140 customers,
+npm run db:seed     # creates no admin; visit /setup to make the first one   # 12 vehicles, 140 customers,
                                                         # ~600 bookings, 42 scored leads, 8 rules
 npm run dev         # sign in at /login with ops@bestauto.co.uk
 ```
@@ -88,7 +87,7 @@ npm run dev         # sign in at /login with ops@bestauto.co.uk
 | `SLACK_WEBHOOK_URL` | no | Makes `notify_slack` actions deliver for real |
 | `RESEND_API_KEY` | no | Marks queued email as sent |
 | `SESSION_SECRET` | **in production** | 32+ char secret signing admin session cookies. The app refuses to start a production session without it |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | seed only | The admin account `npm run db:seed` creates. `SEED_ADMIN_PASSWORD` has no default — the seed fails without it rather than creating a known password |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_NAME` / `SEED_ADMIN_PASSWORD` | no | Provision an admin non-interactively. All three are required together; with any missing the seed creates no account and the first visit to `/setup` does it instead |
 | `CRON_SECRET` | no | Required as `Bearer` on the scheduled endpoint when set |
 | `WEBHOOK_SECRET_<SOURCE>` | no | Enables HMAC-SHA256 verification for that webhook source |
 
@@ -181,8 +180,18 @@ account and a wrong password return the same message and run the same PBKDF2 wor
 be enumerated by response or by timing. The post-login redirect only accepts same-origin paths.
 Forged signatures, tampered payloads and expired cookies are all rejected — verified in testing.
 
+**No account is hardcoded.** On a fresh deployment the admin table is empty, `/login` redirects to
+`/setup`, and the first person to arrive creates the administrator through the UI and is signed in.
+Once one account exists `/setup` is closed permanently — the endpoint returns 409 and the page
+redirects to sign-in — so it can never be used to mint a second privileged account. Further staff
+accounts are created by an existing admin, not through a public route.
+
+The seed no longer invents an account either: set `SEED_ADMIN_EMAIL`, `SEED_ADMIN_NAME` and
+`SEED_ADMIN_PASSWORD` together to provision one non-interactively for CI, or leave them unset and use
+`/setup`.
+
 **The login page never displays credentials.** The reviewer account is documented in this README
-only; the sign-in screen is a plain form with no hints, so the deployed page gives nothing away.
+only; the sign-in screen is a plain form with no hints.
 
 ---
 
@@ -246,6 +255,7 @@ GET    /api/automations                rules, runs, events, outbox, stats
 PATCH  /api/automations/{id}           enable/disable a rule
 POST   /api/webhooks/{source}          inbound receiver
 GET|POST /api/cron/daily-digest        scheduled job
+POST   /api/auth/setup                 create the first admin (409 once one exists)
 POST   /api/auth/login                 sign in (rate limited 5 / 15 min)
 POST   /api/auth/logout                sign out
 GET    /api/openapi                    this spec
@@ -395,7 +405,7 @@ Worth stating plainly rather than leaving to be discovered:
 - **Live site:** https://bestauto-rentals.vercel.app
 - **Repository:** https://github.com/Arnobrizwan/bestauto-rentals
 - **Admin dashboard:** https://bestauto-rentals.vercel.app/admin — sign in with
-  `ops@bestauto.co.uk` / `Pylot-Review-2026` (the login page also offers click-to-fill)
+  `ops@bestauto.com.bd` / `BestAuto-Setup-2026`
 - **AI demonstration:** the concierge widget (bottom-right, every page), the matcher on the home
   page, the sandbox at `/admin/ai`, and the brief at the top of `/admin`
 - **Automation:** `/admin/automations` — make a booking on the site, then watch the run appear

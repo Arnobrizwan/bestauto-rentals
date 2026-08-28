@@ -88,23 +88,25 @@ async function main() {
     `  leads      ${scoredLeads.length} (${scoredLeads.filter((l) => l.tier === "hot").length} hot)`,
   );
 
-  // Admin account. Credentials come from the environment so a real deployment
-  // never inherits a password that is written down in the repository.
-  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "ops@bestauto.co.uk").toLowerCase();
+  // The seed does not invent an administrator. Set all three SEED_ADMIN_*
+  // variables to provision one non-interactively (useful in CI); otherwise the
+  // first person to visit /setup creates the account through the UI.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
-  if (!adminPassword) {
-    throw new Error(
-      "SEED_ADMIN_PASSWORD is required so the seed never creates an account with a default password.",
-    );
+  const adminName = process.env.SEED_ADMIN_NAME?.trim();
+
+  if (adminEmail && adminPassword && adminName) {
+    await db.insert(adminUsers).values({
+      id: "adm_001",
+      email: adminEmail,
+      name: adminName,
+      passwordHash: await hashPassword(adminPassword),
+      role: "admin",
+    });
+    console.log(`  admin      1 (${adminEmail})`);
+  } else {
+    console.log("  admin      0 (visit /setup to create the first administrator)");
   }
-  await db.insert(adminUsers).values({
-    id: "adm_001",
-    email: adminEmail,
-    name: process.env.SEED_ADMIN_NAME ?? "Mike Witzel",
-    passwordHash: await hashPassword(adminPassword),
-    role: "admin",
-  });
-  console.log(`  admin      1 (${adminEmail})`);
 
   await db.insert(automationRules).values(
     DEFAULT_RULES.map((r) => ({

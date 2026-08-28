@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/site/logo";
 import { getSessionClaims } from "@/lib/auth/server";
+import { countAdmins } from "@/server/repositories/admin-users";
 
 import { LoginForm } from "./login-form";
 
@@ -21,6 +22,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
 
   const claims = await getSessionClaims();
   if (claims) redirect(next);
+
+  // A fresh deployment has no staff account yet; send the first person to setup.
+  if ((await countAdmins()) === 0) redirect("/setup");
 
   return (
     <main className="grid min-h-dvh place-items-center bg-canvas px-5 py-14">
