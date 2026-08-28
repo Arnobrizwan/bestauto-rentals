@@ -144,14 +144,25 @@ resolves to a page, and every admin page is reachable from the sidebar. No 404s.
 
 `.github/workflows/ci.yml` runs on every push and pull request.
 
-The pipeline stands up a throwaway Postgres, pushes the schema and seeds it, because the evaluation
-suite scores the recommender against the **real fleet** rather than a stub — running it without a
-database would grade nothing. Cheap deterministic checks go first so failures come back fast:
+```
+QR goldens  →  sidebar + OpenAPI route coverage  →  types  →  lint  →  build
+            →  seed the review branch  →  AI evaluation suite
+```
 
-```
-QR encoder goldens  →  sidebar + OpenAPI route coverage  →  types  →  lint
-                    →  AI evaluation suite  →  production build
-```
+The database-free checks run first so failures come back fast. The evaluation suite comes last
+because it needs data: it scores the recommender against the **real fleet** rather than a stub, so
+running it without a seeded database would grade nothing.
+
+**It runs against a dedicated Neon branch, never production.** `npm run db:seed` truncates, so the
+`DATABASE_URL` secret points at a disposable `ci` branch of the same project that CI pushes the
+schema to and reseeds on every run. Without that secret the suite is skipped and the step summary
+says so, which keeps pull requests from forks useful rather than red.
+
+A `postgres:16` service container would be the obvious way to do this and cannot work here: the app
+reaches Postgres through `drizzle-orm/neon-http`, which talks to a Neon endpoint rather than a
+socket. `next build` also evaluates the database client while collecting page data, so CI supplies a
+placeholder connection string it never connects with, and a separate `HAS_DATABASE` flag — not the
+presence of `DATABASE_URL` — decides whether the seeded steps run.
 
 Deployment is Vercel's Git integration. The workflow also carries an explicit deploy job for when
 that is switched off; it stays inert unless `VERCEL_TOKEN` is configured, rather than failing every
