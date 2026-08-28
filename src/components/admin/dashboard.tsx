@@ -8,7 +8,7 @@ import { SalesAreaChart, type SalesPoint } from "@/components/charts/sales-area"
 import { SourceBars, StatusDonut, UtilisationBars } from "@/components/charts/mini";
 import { WorldSalesMap, type CountrySales } from "@/components/charts/world-map";
 import { Badge, Card, CardHeader, Delta, EmptyState, Skeleton, type BadgeTone } from "@/components/ui";
-import { cn, formatCurrency, formatCurrencyCompact, formatNumber, timeAgo } from "@/lib/utils";
+import { cn, formatCurrency, formatNumber, timeAgo } from "@/lib/utils";
 
 import { RangeFilter, type RangeState } from "./range-filter";
 
@@ -383,19 +383,21 @@ export function Dashboard({
           <CardHeader
             title="Sales Analytics"
             action={
-              <label className="flex items-center gap-2 text-[12px] text-ink-400">
-                <span className="hidden sm:inline">{formatCurrencyCompact(data.kpis.revenue.value)}</span>
+              <span className="relative inline-flex items-center gap-1.5 rounded-lg border border-line bg-white pr-2 pl-2.5">
+                <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM8 3v4M16 3v4M4 11h16" strokeLinecap="round" />
+                </svg>
                 <select
                   value={grain}
                   onChange={(e) => changeGrain(e.target.value)}
                   aria-label="Chart grouping"
-                  className="h-8 rounded-lg border border-line bg-white px-2 font-admin text-[12px] font-semibold text-ink-900 outline-none focus:border-brand-300"
+                  className="h-8 cursor-pointer appearance-none bg-transparent pr-1 font-admin text-[12px] font-semibold text-ink-900 outline-none"
                 >
-                  <option value="day">By day</option>
-                  <option value="week">By week</option>
-                  <option value="month">By month</option>
+                  <option value="day">Daily</option>
+                  <option value="week">Weekly</option>
+                  <option value="month">Monthly</option>
                 </select>
-              </label>
+              </span>
             }
           />
           <div className="p-4">
@@ -422,11 +424,10 @@ export function Dashboard({
           />
           <div className={cn("p-4 transition-opacity", mapLoading && "opacity-60")}>
             <WorldSalesMap data={countries} />
-            <p className="mt-2 text-center text-[12px] text-ink-400">{countries.length} markets in this period</p>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-[13px]">
               <Delta value={data.kpis.revenue.delta} />
               <span className="text-ink-400">
-                {data.kpis.revenue.delta >= 0 ? "increase" : "decrease"} compared to last period
+                {data.kpis.revenue.delta >= 0 ? "increase" : "decrease"} compared to the previous period
               </span>
             </p>
           </div>
