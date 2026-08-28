@@ -41,6 +41,22 @@ export function RangeFilter({
       ? `${formatDate(value.from)} - ${formatDate(value.to)}`
       : (PRESETS.find((p) => p.value === value.preset)?.label ?? "Last 30 days");
 
+  /**
+   * The Figma's greeting bar reads "01 Jan 2024 - 07 Jan 2024".
+   *
+   * A preset name alone leaves an operator working out which dates "Last 30
+   * days" actually covers before they can trust a figure, so a preset shows
+   * the window it resolves to alongside its name. A custom range is already
+   * literal dates and needs no second copy of them.
+   */
+  const resolved = (() => {
+    if (value.from && value.to) return null;
+    const days = Number(String(value.preset).replace("d", "")) || 30;
+    const to = new Date();
+    const from = new Date(to.getTime() - (days - 1) * 86_400_000);
+    return `${formatDate(from)} - ${formatDate(to)}`;
+  })();
+
   return (
     <div className="flex items-center gap-2">
       <div ref={ref} className="relative">
@@ -57,6 +73,9 @@ export function RangeFilter({
           <svg viewBox="0 0 20 20" className={cn("size-3.5 text-ink-400 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
+          {resolved && (
+            <span className="hidden font-normal text-ink-400 sm:inline">· {resolved}</span>
+          )}
         </button>
 
         {open && (

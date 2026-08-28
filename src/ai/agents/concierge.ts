@@ -1,4 +1,4 @@
-import { describeEngine, resolveProvider, type AiMessage, type ContentBlock, type EngineInfo } from "@/ai/provider";
+import { describeEngine, resolveProviderForRequest, type AiMessage, type ContentBlock, type EngineInfo } from "@/ai/provider";
 import { CONCIERGE_SYSTEM_V3 } from "@/ai/prompts";
 import { EXTRA_PRICES, TOOL_SPECS, durationDiscount, executeTool, type ToolContext } from "@/ai/tools";
 import { searchKnowledge } from "@/ai/tools/knowledge";
@@ -647,7 +647,7 @@ async function hostedConcierge(
   turns: ChatTurn[],
   ctx: ToolContext,
 ): Promise<Omit<ConciergeReply, "engine" | "latencyMs">> {
-  const provider = resolveProvider();
+  const provider = await resolveProviderForRequest();
   if (!provider) throw new Error("No provider");
 
   const messages: AiMessage[] = turns.map((t) => ({ role: t.role, content: t.content }));
@@ -717,7 +717,7 @@ async function hostedConcierge(
 
 export async function runConcierge(turns: ChatTurn[], ctx: ToolContext = {}): Promise<ConciergeReply> {
   const started = Date.now();
-  const provider = resolveProvider();
+  const provider = await resolveProviderForRequest();
 
   if (!provider) {
     const reply = await rulesConcierge(turns, ctx);

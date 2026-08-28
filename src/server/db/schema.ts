@@ -365,6 +365,22 @@ export type AutomationRule = typeof automationRules.$inferSelect;
 export type AutomationRun = typeof automationRuns.$inferSelect;
 export type AppEvent = typeof events.$inferSelect;
 export type OutboxMessage = typeof outbox.$inferSelect;
+/**
+ * Daily spend ledger for the hosted AI provider.
+ *
+ * The concierge is on a public URL with a live key. Per-client rate limiting
+ * caps how fast one visitor can ask, not what the day costs across all of
+ * them, and the in-memory limiter cannot see other serverless instances
+ * anyway. A single counted row can: the increment is atomic, so every
+ * instance reads the same running total.
+ */
+export const aiUsage = pgTable("ai_usage", {
+  day: date("day").primaryKey(),
+  requests: integer("requests").notNull().default(0),
+  tokens: integer("tokens").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type VehicleUnit = typeof vehicleUnits.$inferSelect;
 export type VehicleDocument = typeof vehicleDocuments.$inferSelect;
 export type MaintenanceJob = typeof maintenanceJobs.$inferSelect;

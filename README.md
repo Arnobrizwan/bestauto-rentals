@@ -87,6 +87,7 @@ npm run dev         # sign in at /login with the account /setup created
 | `DATABASE_URL` | **yes** | Postgres connection string, used when the override is absent |
 | `ANTHROPIC_API_KEY` | no | Switches all four AI agents to Claude |
 | `OPENAI_API_KEY` | no | Same, for OpenAI-compatible endpoints |
+| `AI_DAILY_REQUEST_LIMIT` / `AI_DAILY_TOKEN_LIMIT` | no | Daily ceiling on hosted AI use. Past either, requests answer from the rules engine instead of the model. Unset means no ceiling |
 | `OPENAI_BASE_URL` | no | Full chat-completions URL. Points the OpenAI adapter at any compatible provider — the live deployment uses Alibaba DashScope |
 | `ANTHROPIC_MODEL` / `OPENAI_MODEL` | no | Override the default model id |
 | `SLACK_WEBHOOK_URL` | no | Makes `notify_slack` actions deliver for real |
@@ -282,6 +283,13 @@ carrying HMAC-SHA256-signed claims. Two layers check it:
 `/api/bookings`, and `POST` on the cron endpoint. The public site keeps what it needs: browsing the
 fleet, `POST /api/bookings`, `POST /api/leads`, and the concierge. Mutations additionally require the
 `admin` role, not merely a valid session.
+
+**Spend.** Per-client rate limiting caps how fast one visitor can ask the AI; it does not cap what a
+day costs across all of them, and the in-process limiter cannot see other serverless instances
+anyway. A counted row in `ai_usage` can: the increment is atomic, so every instance reads the same
+running total, and past the daily ceiling requests answer from the rules engine. **The deterministic
+engine is the budget backstop, not only the no-key fallback** — which is the argument for building it
+as a first-class mode rather than a stub.
 
 **Hardening.** Login is rate limited to five attempts per fifteen minutes per client. A missing
 account and a wrong password return the same message and run the same PBKDF2 work, so accounts cannot

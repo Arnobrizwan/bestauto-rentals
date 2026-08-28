@@ -58,3 +58,32 @@ export function describeEngine(provider: LlmProvider | null): EngineInfo {
     hosted: true,
   };
 }
+
+/**
+ * The provider to use for one request, or null to answer with the rules engine.
+ *
+ * Per-client rate limiting caps how fast a single visitor can ask; it does not
+ * cap what a day costs across everyone. This does, and the fallback is not a
+ * degraded mode bolted on for the occasion — it is the same deterministic
+ * engine the product ships with, which is why a spend ceiling can be enforced
+ * by simply declining to use the model.
+ */
+export async function resolveProviderForRequest(): Promise<LlmProvider | null> {
+  const provider = resolveProvider();
+  if (!provider) return null;
+
+  const { consumeAiBudget, recordAiTokens } = await import("@/server/repositories/ai-usage");
+  const budget = await consumeAiBudget();
+  if (!budget.withinBudget) return null;
+
+  // Wrapped rather than recorded at each agent: there are five call sites and
+  // the one that forgets is the one that makes the ledger wrong.
+  return {
+    ...provider,
+    async complete(req) {
+      const result = await provider.complete(req);
+      void recordAiTokens(result.usage.inputTokens + result.usage.outputTokens);
+      return result;
+    },
+  };
+}

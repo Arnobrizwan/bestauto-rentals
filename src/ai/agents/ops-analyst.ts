@@ -1,4 +1,4 @@
-import { describeEngine, resolveProvider, type EngineInfo } from "@/ai/provider";
+import { describeEngine, resolveProviderForRequest, type EngineInfo } from "@/ai/provider";
 import { OPS_ANALYST_SYSTEM_V1 } from "@/ai/prompts";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -125,7 +125,7 @@ export function rulesInsights(s: OpsSnapshot): Insight[] {
 export async function generateInsights(snapshot: OpsSnapshot): Promise<InsightResult> {
   const started = Date.now();
   const baseline = rulesInsights(snapshot);
-  const provider = resolveProvider();
+  const provider = await resolveProviderForRequest();
 
   if (!provider) return { insights: baseline, engine: describeEngine(null), latencyMs: Date.now() - started };
 

@@ -1,4 +1,4 @@
-import { describeEngine, resolveProvider, type EngineInfo } from "@/ai/provider";
+import { describeEngine, resolveProviderForRequest, type EngineInfo } from "@/ai/provider";
 import { RECOMMENDER_SYSTEM_V2 } from "@/ai/prompts";
 import { formatCurrency } from "@/lib/utils";
 import { listVehicles, type VehicleWithStats } from "@/server/repositories/vehicles";
@@ -379,7 +379,7 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
   const started = Date.now();
   const { items: pool } = await listVehicles({ limit: 40 });
   const baseline = await rulesRecommend(brief, pool);
-  const provider = resolveProvider();
+  const provider = await resolveProviderForRequest();
 
   if (!provider) {
     return {

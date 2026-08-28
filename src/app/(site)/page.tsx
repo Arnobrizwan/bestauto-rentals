@@ -90,11 +90,23 @@ export default async function HomePage() {
                 cost, and an assistant that checks real availability before it answers.
               </p>
 
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <ButtonLink href="/cars" size="lg">
+              {/*
+                Not flex-wrap: at 390px two large buttons wrapped onto separate
+                rows with the row gap between them, which read as a layout
+                accident rather than a stack. They share the row instead and
+                only stop stretching once there is space for them to sit at
+                their natural width.
+              */}
+              <div className="mt-9 flex items-center gap-3">
+                <ButtonLink href="/cars" size="lg" className="flex-1 justify-center sm:flex-none">
                   Booking Now
                 </ButtonLink>
-                <ButtonLink href="#deals" variant="ghost" size="lg">
+                <ButtonLink
+                  href="#deals"
+                  variant="ghost"
+                  size="lg"
+                  className="flex-1 justify-center whitespace-nowrap sm:flex-none"
+                >
                   See all cars
                   <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d="M5 12h14m0 0-6-6m6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />

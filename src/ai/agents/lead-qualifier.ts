@@ -1,4 +1,4 @@
-import { describeEngine, resolveProvider, type EngineInfo } from "@/ai/provider";
+import { describeEngine, resolveProviderForRequest, type EngineInfo } from "@/ai/provider";
 import { LEAD_QUALIFIER_SYSTEM_V2 } from "@/ai/prompts";
 
 import { formatCurrency } from "@/lib/utils";
@@ -184,7 +184,7 @@ export function rulesQualify(lead: LeadInput): Omit<LeadScore, "engine" | "laten
 export async function qualifyLead(lead: LeadInput): Promise<LeadScore> {
   const started = Date.now();
   const baseline = rulesQualify(lead);
-  const provider = resolveProvider();
+  const provider = await resolveProviderForRequest();
 
   if (!provider) {
     return { ...baseline, engine: describeEngine(null), latencyMs: Date.now() - started };
