@@ -87,6 +87,7 @@ npm run dev         # sign in at /login with the account /setup created
 | `DATABASE_URL` | **yes** | Postgres connection string, used when the override is absent |
 | `ANTHROPIC_API_KEY` | no | Switches all four AI agents to Claude |
 | `OPENAI_API_KEY` | no | Same, for OpenAI-compatible endpoints |
+| `OPENAI_BASE_URL` | no | Full chat-completions URL. Points the OpenAI adapter at any compatible provider — the live deployment uses Alibaba DashScope |
 | `ANTHROPIC_MODEL` / `OPENAI_MODEL` | no | Override the default model id |
 | `SLACK_WEBHOOK_URL` | no | Makes `notify_slack` actions deliver for real |
 | `RESEND_API_KEY` | no | Marks queued email as sent |
@@ -96,6 +97,11 @@ npm run dev         # sign in at /login with the account /setup created
 | `WEBHOOK_SECRET_<SOURCE>` | no | Enables HMAC-SHA256 verification for that webhook source |
 
 **The AI layer runs fully with only `DATABASE_URL`.** See [AI layer](#ai-layer) for why.
+
+The deployed site currently answers with **Qwen (`qwen-plus`)** through DashScope's
+OpenAI-compatible endpoint, which needed no adapter change — the provider interface treats it as
+any other compatible gateway. `/api/health` reports which engine actually answered, and the
+concierge tags every reply with it.
 
 ---
 
@@ -209,7 +215,16 @@ deterministic engine:
 - the qualifier is a signal-weighted scorer that returns the maths behind every point;
 - the analyst is threshold-driven and only emits a line when it can cite a figure.
 
-Adding `ANTHROPIC_API_KEY` upgrades all four in place. If a hosted call fails, times out or returns
+Adding a key upgrades all four in place — `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` with
+`OPENAI_BASE_URL` for any OpenAI-compatible provider.
+
+**Worth stating honestly: the hosted model scores lower on this project's own suite than the
+deterministic engine does.** The rules engine passes 65/65; `qwen-plus` runs 88–92% across repeated
+runs. It is a real language model doing real tool calls, and it handles phrasing the rules never
+anticipated — but on the cases that were written down, the engine tuned against them wins. That is
+why the evaluation threshold differs by engine rather than being a single number, and why the rules
+engine is a first-class mode rather than a fallback of last resort. Removing `OPENAI_API_KEY`
+returns the site to it. If a hosted call fails, times out or returns
 something unusable, the request **degrades to the rules engine** and reports `degraded` in the
 response rather than erroring. The engine that actually answered is surfaced in the admin topbar, on
 each chat message and in the API response.
