@@ -416,6 +416,17 @@ the AI concierge, and get identical scoring and automation from both.
   version-information block above version 6. An independent decoder confirmed all four sample codes
   round-trip, and `npm run test:qr` pins them so a regression fails CI instead of shipping codes that
   no longer scan.
+- **The public pages are served from the edge, and that was a real bug.** Every route originally
+  carried `force-dynamic`. `x-vercel-id` reads `bom1::iad1`: requests enter at Mumbai and the
+  function runs in Washington, beside the database. The app's own measurement of a query is 7ms,
+  while TTFB was 430–540ms warm — the gap was an intercontinental round trip, paid on every page
+  load because nothing was ever cached. The home page and the twelve vehicle pages hold nothing
+  per-visitor, so they now prerender and revalidate every five minutes: **~470ms → ~165ms** on the
+  home page. Moving the functions closer would be the wrong fix; it would move them away from the
+  database and turn that 7ms query into the same round trip. `/cars` stays dynamic because it reads
+  `searchParams`, which is what makes a filtered fleet URL shareable. Availability on a cached card
+  can be five minutes stale, which is safe because it was never authoritative — `POST /api/bookings`
+  re-checks it — and publishing a vehicle revalidates the fleet paths immediately.
 - **URL as state.** Every filter, sort and page writes to the query string, so results are
   shareable, back-button-correct and server-rendered.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
