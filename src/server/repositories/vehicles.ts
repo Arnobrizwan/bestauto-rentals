@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/server/db/client";
 import { bookings, vehicles, type Vehicle } from "@/server/db/schema";
@@ -34,7 +34,11 @@ function buildWhere(f: VehicleFilters): SQL | undefined {
   if (f.seatsMin) clauses.push(gte(vehicles.seats, f.seatsMin));
   if (f.priceMin !== undefined) clauses.push(gte(sql`${vehicles.pricePerDay}::numeric`, f.priceMin));
   if (f.priceMax !== undefined) clauses.push(lte(sql`${vehicles.pricePerDay}::numeric`, f.priceMax));
-  if (f.location) clauses.push(eq(vehicles.location, f.location));
+  // Matched as a prefix, not an exact string. Branches are named "Dhaka
+  // Gulshan", "Dhaka Banani" and so on, so an exact match meant a request for
+  // "Dhaka" — which is how customers and models alike refer to the city —
+  // matched nothing at all and read as "no cars in Dhaka".
+  if (f.location) clauses.push(ilike(vehicles.location, `${f.location}%`));
   if (f.q) {
     const needle = `%${f.q.toLowerCase()}%`;
     clauses.push(
