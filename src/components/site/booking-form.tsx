@@ -50,6 +50,10 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponNote, setCouponNote] = useState<string | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
 
   const days = useMemo(() => {
     const diff = new Date(dropoffAt).getTime() - new Date(pickupAt).getTime();
@@ -65,8 +69,44 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
       if (!extra) return sum;
       return sum + extra.perDay * (ONE_OFF.has(name_) ? 1 : days);
     }, 0);
-    return { base, rate, discount, extrasTotal, total: base - discount + extrasTotal };
-  }, [pricePerDay, days, extras]);
+    const couponDiscount = coupon ? Math.min(coupon.discount, base - discount) : 0;
+    return {
+      base,
+      rate,
+      discount,
+      extrasTotal,
+      couponDiscount,
+      total: base - discount + extrasTotal - couponDiscount,
+    };
+  }, [pricePerDay, days, extras, coupon]);
+
+  // Previewing a code is a read: the booking endpoint looks it up again and
+  // re-prices it, so nothing here is load-bearing.
+  async function applyCoupon() {
+    const code = couponCode.trim();
+    if (!code || days < 1) return;
+    setCheckingCoupon(true);
+    setCouponNote(null);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code, subtotal: totals.base - totals.discount, days }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setCoupon({ code: data.code, discount: data.discount });
+        setCouponNote(null);
+      } else {
+        setCoupon(null);
+        setCouponNote(typeof data.reason === "string" ? data.reason : "That code cannot be used.");
+      }
+    } catch {
+      setCouponNote("Could not check that code.");
+    } finally {
+      setCheckingCoupon(false);
+    }
+  }
 
   function toggleExtra(name_: string) {
     setExtras((prev) => (prev.includes(name_) ? prev.filter((e) => e !== name_) : [...prev, name_]));
@@ -92,6 +132,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
           pickupAt,
           dropoffAt,
           extras,
+          couponCode: coupon?.code,
           source: "web",
         }),
       });
@@ -213,7 +254,46 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
         </label>
       </div>
 
-      <dl className="mt-6 space-y-2 border-t border-line pt-5 text-sm">
+      <div className="mt-6 border-t border-line pt-5">
+        <label htmlFor="coupon" className={labelClass}>
+          Discount code <span className="font-normal text-ink-400">(optional)</span>
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="coupon"
+            value={couponCode}
+            onChange={(e) => {
+              setCouponCode(e.target.value.toUpperCase());
+              setCoupon(null);
+              setCouponNote(null);
+            }}
+            placeholder="EIDSAFAR"
+            maxLength={40}
+            autoComplete="off"
+            className={`${field} font-mono tracking-wide uppercase`}
+          />
+          <button
+            type="button"
+            onClick={applyCoupon}
+            disabled={checkingCoupon || !couponCode.trim() || days < 1}
+            className="h-11 shrink-0 rounded-xl border border-ink-200 px-4 text-sm font-semibold text-ink-700 transition-colors hover:border-brand-400 hover:text-brand-500 disabled:opacity-40"
+          >
+            {checkingCoupon ? "Checking…" : "Apply"}
+          </button>
+        </div>
+        {coupon && (
+          <p className="mt-1.5 text-[13px] font-medium text-success">
+            {coupon.code} applied — {formatCurrency(totals.couponDiscount)} off.
+          </p>
+        )}
+        {couponNote && (
+          <p role="alert" className="mt-1.5 text-[13px] font-medium text-danger">
+            {couponNote}
+          </p>
+        )}
+      </div>
+
+      <dl className="mt-5 space-y-2 border-t border-line pt-5 text-sm">
         <div className="flex justify-between text-ink-500">
           <dt>
             {formatCurrency(pricePerDay)} &times; {days} {days === 1 ? "day" : "days"}
@@ -230,6 +310,12 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
           <div className="flex justify-between text-ink-500">
             <dt>Extras</dt>
             <dd className="font-medium text-ink-900">{formatCurrency(totals.extrasTotal)}</dd>
+          </div>
+        )}
+        {totals.couponDiscount > 0 && coupon && (
+          <div className="flex justify-between text-success">
+            <dt>Code {coupon.code}</dt>
+            <dd className="font-medium">−{formatCurrency(totals.couponDiscount)}</dd>
           </div>
         )}
         <div className="flex justify-between border-t border-line pt-3 font-display text-lg font-bold text-ink-900">

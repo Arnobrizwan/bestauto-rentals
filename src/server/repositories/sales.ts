@@ -19,6 +19,8 @@ const bookingSelect = {
   extrasTotal: sql<number>`${bookings.extrasTotal}::float8`,
   total: sql<number>`${bookings.total}::float8`,
   paymentMethod: bookings.paymentMethod,
+  couponCode: bookings.couponCode,
+  couponDiscount: sql<number>`${bookings.couponDiscount}::float8`,
   pickupLocation: bookings.pickupLocation,
   customerName: customers.name,
   customerEmail: customers.email,

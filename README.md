@@ -297,7 +297,7 @@ Automation failures are logged and swallowed: a broken workflow must never fail 
 
 ## API
 
-21 endpoints across 28 method handlers. Full machine-readable spec at **`/api/openapi`** — it now
+22 endpoints across 29 method handlers. Full machine-readable spec at **`/api/openapi`** — it now
 covers every route the app serves, verified by a diff in CI rather than by hand.
 
 ```
@@ -449,6 +449,10 @@ The product is built for Bangladesh, not translated into it.
   booking form and the concierge all say so.
 - **Branches.** Eleven, weighted to Dhaka (Gulshan, Banani, Uttara, Dhanmondi, Motijheel), plus
   Shahjalal Airport, Chattogram, Sylhet, Khulna, Rajshahi and Cox's Bazar.
+- **Offers.** The promotional calendar is the Bangladeshi one — Eid travel, the November-to-February
+  wedding season, the monsoon trough. A code comes off on top of the automatic multi-day discount,
+  is priced against the server's own quote rather than anything the client sends, and is redeemed
+  with a conditional increment so two bookings racing for the last redemption cannot both win it.
 - **Payments.** bKash, Nagad, Rocket, SSLCOMMERZ, cards, bank transfer and cash at handover.
   `country` and `paymentMethod` are optional on `POST /api/bookings`, so the fallbacks are part of the
   localisation rather than an afterthought: a booking that omits them is recorded as Bangladesh (ISO `050`)

@@ -22,6 +22,7 @@ const createSchema = z.object({
   extras: z.array(z.string().max(60)).max(6).optional(),
   paymentMethod: z.string().max(40).optional(),
   source: z.string().max(40).optional(),
+  couponCode: z.string().max(40).optional(),
 });
 
 const listSchema = z.object({

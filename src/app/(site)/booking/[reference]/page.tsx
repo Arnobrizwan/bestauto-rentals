@@ -86,6 +86,17 @@ export default async function BookingConfirmationPage({ params }: { params: Para
             </div>
           )}
 
+          {Number(booking.couponDiscount) > 0 && (
+            <div className="mt-6 flex items-baseline justify-between border-t border-line pt-6 text-success">
+              <span className="text-[15px]">
+                Code <span className="font-mono font-semibold">{booking.couponCode}</span>
+              </span>
+              <span className="font-display text-lg font-bold">
+                −{formatCurrency(Number(booking.couponDiscount))}
+              </span>
+            </div>
+          )}
+
           <div className="mt-8 flex items-baseline justify-between border-t border-line pt-6">
             <span className="text-[15px] text-ink-400">Total paid</span>
             <span className="font-display text-3xl font-bold text-ink-900">{formatCurrency(Number(booking.total))}</span>

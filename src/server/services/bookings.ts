@@ -4,6 +4,7 @@ import { log } from "@/lib/observability/logger";
 import { formatCurrency } from "@/lib/utils";
 import { sanitizeText } from "@/lib/security/http";
 import { countOverlapping, insertBooking, updateBookingStatus } from "@/server/repositories/bookings";
+import { findRedeemableCoupon, redeemCoupon } from "@/server/repositories/fleet-ops";
 import { upsertCustomer } from "@/server/repositories/customers";
 import { getVehicleBySlug } from "@/server/repositories/vehicles";
 
@@ -42,6 +43,38 @@ export function quote(pricePerDay: number, days: number, extras: string[]): Quot
   };
 }
 
+export type CouponOutcome =
+  | { ok: true; code: string; id: string; discount: number }
+  | { ok: false; reason: string };
+
+/**
+ * Prices a coupon against a quote.
+ *
+ * Percentage codes come off the already-duration-discounted subtotal rather
+ * than the list price, so a long hire cannot stack its way below cost, and a
+ * flat code is capped at the subtotal so a small booking can never produce a
+ * negative total.
+ */
+export function priceCoupon(
+  coupon: { id: string; code: string; kind: string; value: number; minDays: number; usageLimit: number; usedCount: number; live: boolean },
+  subtotal: number,
+  days: number,
+): CouponOutcome {
+  if (!coupon.live) return { ok: false, reason: "That code is not active." };
+  if (days < coupon.minDays) {
+    return { ok: false, reason: `That code needs a booking of at least ${coupon.minDays} days.` };
+  }
+  if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+    return { ok: false, reason: "That code has been fully redeemed." };
+  }
+
+  const raw = coupon.kind === "percent" ? (subtotal * coupon.value) / 100 : coupon.value;
+  const discount = Number(Math.min(raw, subtotal).toFixed(2));
+  if (discount <= 0) return { ok: false, reason: "That code takes nothing off this booking." };
+
+  return { ok: true, code: coupon.code, id: coupon.id, discount };
+}
+
 export function dayCount(pickupAt: Date, dropoffAt: Date) {
   return Math.max(1, Math.ceil((dropoffAt.getTime() - pickupAt.getTime()) / 86_400_000));
 }
@@ -56,6 +89,7 @@ export type CreateBookingInput = {
   extras?: string[];
   paymentMethod?: string;
   source?: string;
+  couponCode?: string;
 };
 
 export class BookingError extends Error {
@@ -94,6 +128,26 @@ export async function createBooking(input: CreateBookingInput) {
 
   const priced = quote(Number(vehicle.pricePerDay), days, input.extras ?? []);
 
+  // A coupon is redeemed here, against the server's own quote — the client
+  // never gets to say what a code is worth.
+  let coupon: CouponOutcome | null = null;
+  if (input.couponCode?.trim()) {
+    const found = await findRedeemableCoupon(input.couponCode);
+    if (!found) throw new BookingError("That code was not recognised.", 422);
+
+    coupon = priceCoupon(found, priced.base - priced.discount, days);
+    if (!coupon.ok) throw new BookingError(coupon.reason, 422);
+
+    // The increment is conditional on the limit, so two bookings racing for the
+    // last redemption cannot both win it.
+    if (!(await redeemCoupon(found.id))) {
+      throw new BookingError("That code has been fully redeemed.", 409);
+    }
+  }
+
+  const couponDiscount = coupon?.ok ? coupon.discount : 0;
+  const total = Number((priced.total - couponDiscount).toFixed(2));
+
   const customer = await upsertCustomer({
     name: sanitizeText(input.customer.name, 120),
     email: input.customer.email.trim().toLowerCase(),
@@ -116,14 +170,16 @@ export async function createBooking(input: CreateBookingInput) {
     days,
     subtotal: (priced.base - priced.discount).toFixed(2),
     extrasTotal: priced.extrasTotal.toFixed(2),
-    total: priced.total.toFixed(2),
+    couponCode: coupon?.ok ? coupon.code : "",
+    couponDiscount: couponDiscount.toFixed(2),
+    total: total.toFixed(2),
     status: "success",
     paymentMethod: input.paymentMethod ?? "bKash",
     extras: priced.extras.map((e) => e.name),
     source: input.source ?? "web",
   });
 
-  log.info("booking.created", { reference, vehicle: vehicle.slug, total: priced.total });
+  log.info("booking.created", { reference, vehicle: vehicle.slug, total, coupon: coupon?.ok ? coupon.code : undefined });
 
   const automation = await emit("booking.created", {
     booking: {
@@ -136,12 +192,15 @@ export async function createBooking(input: CreateBookingInput) {
       days,
       pickupDate: pickupAt.toISOString().slice(0, 10),
       pickupLocation: booking.pickupLocation,
-      total: formatCurrency(priced.total),
-      totalValue: priced.total,
+      // The amount actually charged, not the pre-coupon quote: the high-value
+      // review rule must not fire on money the customer never paid.
+      total: formatCurrency(total),
+      totalValue: total,
+      couponCode: coupon?.ok ? coupon.code : "",
     },
   });
 
-  return { booking, vehicle, customer, quote: priced, automation };
+  return { booking, vehicle, customer, quote: { ...priced, couponDiscount, total }, automation };
 }
 
 export async function cancelBooking(id: string, payload: Record<string, unknown>) {

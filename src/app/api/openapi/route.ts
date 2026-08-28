@@ -139,6 +139,14 @@ export async function GET(req: Request) {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },
       },
+      "/api/coupons/validate": {
+        post: {
+          summary: "Preview a discount code",
+          description:
+            "Preview only — nothing is reserved or redeemed. POST /api/bookings looks the code up again and re-prices it against its own quote, so a client that edits this response changes nothing.",
+          responses: { "200": { description: "valid true with the discount, or false with a reason" }, "422": errorResponse },
+        },
+      },
       "/api/team": {
         get: { summary: "Staff accounts (never returns a password hash)", responses: { "200": { description: "Members" }, "401": errorResponse } },
         post: {

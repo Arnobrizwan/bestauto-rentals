@@ -211,3 +211,48 @@ export async function listCoupons() {
 
   return rows.map((r) => ({ ...r, value: Number(r.value), daysLeft: Number(r.daysLeft) }));
 }
+
+/**
+ * Looks up a redeemable coupon.
+ *
+ * Validity is checked in SQL against the database's own `current_date` rather
+ * than the server's clock, so a request landing either side of midnight cannot
+ * redeem a code the board already shows as expired.
+ */
+export async function findRedeemableCoupon(code: string) {
+  const [row] = await db
+    .select({
+      id: coupons.id,
+      code: coupons.code,
+      kind: coupons.kind,
+      value: sql<number>`${coupons.value}::float8`,
+      minDays: coupons.minDays,
+      usageLimit: coupons.usageLimit,
+      usedCount: coupons.usedCount,
+      live: sql<boolean>`(
+        ${coupons.active}
+        and ${coupons.startsAt} <= current_date
+        and ${coupons.endsAt} >= current_date
+      )`,
+    })
+    .from(coupons)
+    .where(eq(sql`upper(${coupons.code})`, code.trim().toUpperCase()))
+    .limit(1);
+
+  return row ? { ...row, value: Number(row.value) } : null;
+}
+
+/** Conditional increment: the row only moves while the limit still allows it. */
+export async function redeemCoupon(id: string) {
+  const [row] = await db
+    .update(coupons)
+    .set({ usedCount: sql`${coupons.usedCount} + 1` })
+    .where(
+      and(
+        eq(coupons.id, id),
+        sql`(${coupons.usageLimit} = 0 or ${coupons.usedCount} < ${coupons.usageLimit})`,
+      ),
+    )
+    .returning({ id: coupons.id, usedCount: coupons.usedCount });
+  return row ?? null;
+}

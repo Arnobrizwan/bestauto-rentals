@@ -93,6 +93,10 @@ export const bookings = pgTable(
     status: text("status").notNull().default("pending"),
     paymentMethod: text("payment_method").notNull().default("bKash"),
     extras: jsonb("extras").$type<string[]>().notNull().default([]),
+    /** The code redeemed, if any, and what it took off. Recorded rather than
+        recomputed, because a coupon's terms can change after the fact. */
+    couponCode: text("coupon_code").notNull().default(""),
+    couponDiscount: numeric("coupon_discount", { precision: 10, scale: 2 }).notNull().default("0"),
     source: text("source").notNull().default("web"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

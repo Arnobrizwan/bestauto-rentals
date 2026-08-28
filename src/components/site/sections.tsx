@@ -78,7 +78,7 @@ const REASONS = [
   },
   {
     title: "Best Price Guaranteed",
-    body: "Straight taka pricing with the driver included and fuel at cost — no surprise line items at handover. Multi-day discounts apply automatically: 12% from a week, 25% from a month.",
+    body: "Straight taka pricing with the driver included and fuel at cost — no surprise line items at handover. Multi-day discounts apply automatically: 12% from a week, 25% from a month, and a seasonal code comes off on top.",
     icon: "M20.6 13.4 12.4 21.6a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4V4a2 2 0 0 1 2-2h9a2 2 0 0 1 1.4.6l6.4 6.4a2 2 0 0 1 0 2.8Z M7 7h.01",
   },
   {
@@ -189,8 +189,8 @@ Three cars or more? Get invoiced monthly.
               The longer you keep it, the less it costs.
             </h3>
             <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-ink-400">
-              Discounts apply automatically at checkout — no code, no haggling. You always see the discounted total in
-              taka before you pay.
+              The multi-day discount applies automatically at checkout — no code, no haggling. Seasonal offers do use a
+              code, and it comes off on top. You always see the discounted total in taka before you pay.
             </p>
           </div>
           <dl className="relative mt-8 grid grid-cols-4 gap-2">

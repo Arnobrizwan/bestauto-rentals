@@ -96,7 +96,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Sea
             </Td>
             <Td muted>
               {i.vehicleName}
-              <span className="block text-[11px] text-ink-400">{i.days} days</span>
+              <span className="block text-[11px] text-ink-400">
+                {i.days} days
+                {i.couponCode && <span className="ml-1 font-mono text-success">{i.couponCode}</span>}
+              </span>
             </Td>
             <Td muted>{formatDate(i.createdAt, { day: "numeric", month: "short", year: "numeric" })}</Td>
             <Td muted>{i.paymentMethod}</Td>
