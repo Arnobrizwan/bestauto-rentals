@@ -1,5 +1,6 @@
 import { describeEngine, resolveProvider, type EngineInfo } from "@/ai/provider";
 import { RECOMMENDER_SYSTEM_V2 } from "@/ai/prompts";
+import { formatCurrency } from "@/lib/utils";
 import { listVehicles, type VehicleWithStats } from "@/server/repositories/vehicles";
 
 export type RecommendBrief = {
@@ -10,7 +11,7 @@ export type RecommendBrief = {
   days?: number;
   occasion?: "family" | "business" | "leisure" | "special" | "city" | "unknown";
   transmission?: "Automatic" | "Manual";
-  fuel?: "Petrol" | "Diesel" | "Hybrid" | "Electric";
+  fuel?: "Petrol" | "Octane" | "Hybrid" | "Diesel";
   luggage?: number;
   location?: string;
 };
@@ -50,11 +51,11 @@ export type RecommendResult = {
 --------------------------------------------------------------------------- */
 
 const OCCASION_KEYWORDS: Record<NonNullable<RecommendBrief["occasion"]>, string[]> = {
-  family: ["family", "kids", "children", "child", "holiday", "luggage", "dog", "school"],
-  business: ["business", "work", "client", "meeting", "airport", "conference", "corporate", "commute"],
-  leisure: ["road trip", "weekend", "coast", "tour", "explore", "scenic", "drive"],
-  special: ["wedding", "birthday", "anniversary", "proposal", "photoshoot", "celebrate", "track"],
-  city: ["city", "town", "parking", "congestion", "short trips", "errand", "urban"],
+  family: ["family", "kids", "children", "child", "relatives", "luggage", "picnic", "school", "eid"],
+  business: ["business", "work", "client", "meeting", "airport", "conference", "corporate", "office", "delegation"],
+  leisure: ["tour", "trip", "cox's bazar", "coxs bazar", "sylhet", "bandarban", "sreemangal", "rangamati", "sajek", "weekend", "explore"],
+  special: ["wedding", "bou", "gaye holud", "reception", "birthday", "anniversary", "photoshoot", "vip"],
+  city: ["city", "dhaka", "traffic", "parking", "short trips", "errand", "commute", "office run"],
   unknown: [],
 };
 
@@ -72,23 +73,24 @@ function inferOccasion(brief: string): NonNullable<RecommendBrief["occasion"]> {
   return best;
 }
 
-/** Extracts "£120", "120 a day", "under 90" style budgets from free text. */
+/** Extracts "৳6000", "6000 taka a day", "under 8000" style budgets from free text. */
 function inferBudget(brief: string): number | undefined {
-  const money = brief.match(/(?:£|\$|gbp\s*)(\d{2,4})/i);
+  const money = brief.match(/(?:৳|\btk\.?\s*|\bbdt\s*)(\d{3,6})/i);
   if (money) return Number(money[1]);
-  const perDay = brief.match(/(\d{2,4})\s*(?:pounds?|quid|gbp)?\s*(?:a|per|\/)\s*day/i);
+  const perDay = brief.match(/(\d{3,6})\s*(?:taka|tk|bdt)?\s*(?:a|per|\/)\s*day/i);
   if (perDay) return Number(perDay[1]);
-  const under = brief.match(/(?:under|below|max(?:imum)?|up to)\s*(?:£|\$)?\s*(\d{2,4})/i);
+  const under = brief.match(/(?:under|below|max(?:imum)?|up to|around|about)\s*(?:৳|tk\.?\s*)?\s*(\d{3,6})/i);
   if (under) return Number(under[1]);
 
   // No figure given, but "cheap" is still a budget statement. Treat it as a
-  // soft cap so price actually influences the ranking.
-  if (/\b(cheap|cheapest|budget|affordable|economical|inexpensive|low cost)\b/i.test(brief)) return 70;
+  // soft cap so price actually influences the ranking. 5,000 taka a day is
+  // roughly where the economy fleet tops out.
+  if (/\b(cheap|cheapest|budget|affordable|economical|inexpensive|low cost)\b/i.test(brief)) return 5000;
   return undefined;
 }
 
 const PARTY_WORDS: Record<string, number> = {
-  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
 };
 
 export function inferPassengers(brief: string): number | undefined {
@@ -100,7 +102,7 @@ export function inferPassengers(brief: string): number | undefined {
   const collective = brief.match(/(?:family|party|group|team|couple)\s+of\s+(\d+)/i) ?? brief.match(/\bfor\s+(\d+)\s*(?!\s*(?:days?|nights?|weeks?|hours?))/i);
   if (collective) {
     const n = Number(collective[1]);
-    if (n >= 1 && n <= 9) return n;
+    if (n >= 1 && n <= 15) return n;
   }
 
   for (const [word, n] of Object.entries(PARTY_WORDS)) {
@@ -115,20 +117,22 @@ function inferPreferences(brief: string) {
   const text = brief.toLowerCase();
   const transmission: RecommendBrief["transmission"] = /\bautomatic\b|\bauto\b/.test(text)
     ? "Automatic"
-    : /\bmanual\b|stick shift/.test(text)
+    : /\bmanual\b|stick shift|gear/.test(text)
       ? "Manual"
       : undefined;
 
   const fuel: RecommendBrief["fuel"] = /\bhybrid\b/.test(text)
     ? "Hybrid"
-    : /\belectric\b|\bev\b/.test(text)
-      ? "Electric"
-      : /\bdiesel\b/.test(text)
-        ? "Diesel"
+    : /\bdiesel\b/.test(text)
+      ? "Diesel"
+      : /\boctane\b/.test(text)
+        ? "Octane"
         : undefined;
 
   return { transmission, fuel };
 }
+
+const money = (n: number) => formatCurrency(n, { decimals: false });
 
 type Scored = { vehicle: VehicleWithStats; score: number; positives: string[]; negatives: string[] };
 
@@ -164,18 +168,18 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
     const ratio = price / brief.budgetPerDay;
     if (ratio <= 0.7) {
       score += 20;
-      positives.push(`comes in at £${price}/day, well under your £${brief.budgetPerDay} budget`);
+      positives.push(`comes in at ${money(price)}/day, well under your ${money(brief.budgetPerDay)} budget`);
     } else if (ratio <= 1) {
       score += 24;
-      positives.push(`lands at £${price}/day, inside your £${brief.budgetPerDay} budget`);
+      positives.push(`lands at ${money(price)}/day, inside your ${money(brief.budgetPerDay)} budget`);
     } else if (ratio <= 1.15) {
       score -= 8;
-      negatives.push(`£${price}/day is just over budget`);
+      negatives.push(`${money(price)}/day is just over budget`);
     } else {
-      // Scale with how far over: a flat penalty rated a £3,200 hypercar the
-      // same as an £89 SUV against a £70 budget, which is plainly wrong.
+      // Scale with how far over: a flat penalty rated a ৳35,000 Land Cruiser
+      // the same as a ৳6,500 Vezel against a ৳5,000 budget, which is plainly wrong.
       score -= 25 + Math.min(75, (ratio - 1.15) * 45);
-      negatives.push(`£${price}/day is well over your £${brief.budgetPerDay} budget`);
+      negatives.push(`${money(price)}/day is well over your ${money(brief.budgetPerDay)} budget`);
     }
   }
 
@@ -237,9 +241,9 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
         score += 20;
         positives.push("has a footprint that fits the gaps other cars drive past");
       }
-      if (price < 60) {
+      if (price < 5000) {
         score += 10;
-        positives.push(`costs £${price}/day for errands that do not need more`);
+        positives.push(`costs ${money(price)}/day for runs that do not need more`);
       }
       if (v.co2 < 130) {
         score += 6;
@@ -260,7 +264,7 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
     case "leisure":
       if (v.segment === "large") {
         score += 10;
-        positives.push("is enough car to make the drive part of the trip");
+        positives.push("has the clearance and the seats for an upcountry run");
       }
       if (v.bags >= 3) {
         score += 6;
@@ -283,16 +287,16 @@ function headlineFor(s: Scored, occasion: RecommendBrief["occasion"], rank: numb
   // The lead pick gets the occasion headline; the alternatives get something
   // specific to the car, so the three cards do not read identically.
   // Only use the occasion headline when the car actually earns the claim - a
-  // £89 SUV should not be labelled "small, cheap, easy to park".
+  // mid-priced SUV should not be labelled "small, cheap, easy in traffic".
   if (rank === 0) {
     if (occasion === "family" && v.seats >= 5) return `Room for ${v.seats} and the bags`;
-    if (occasion === "city" && v.segment === "small") return "Small, cheap, easy to park";
+    if (occasion === "city" && v.segment === "small") return "Small, cheap, easy in traffic";
     if (occasion === "business" && v.transmission === "Automatic") return "Quiet, automatic, arrives well";
     if (occasion === "special" && v.segment === "exclusive") return "The one people photograph";
     if (occasion === "leisure" && v.bags >= 3) return "Built for the long way round";
   }
-  if (v.segment === "exclusive") return `${v.bodyType}, ${v.seats} seats, no subtlety`;
-  if (Number(v.pricePerDay) < 60) return "The value pick";
+  if (v.segment === "exclusive") return `${v.bodyType}, ${v.seats} seats, chauffeur-driven`;
+  if (Number(v.pricePerDay) < 4500) return "The value pick";
   if (v.fuel === "Hybrid") return `Hybrid ${v.bodyType}, ${v.seats} seats`;
   return `${v.transmission} ${v.bodyType}, ${v.seats} seats`;
 }
@@ -343,9 +347,7 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
       headline: headlineFor(s, resolved.occasion, i),
       reason: why
         ? `The ${v.name} ${why}.`
-        : `The ${v.name} pairs ${v.seats} seats and a ${v.transmission.toLowerCase()} box at £${Number(
-            v.pricePerDay,
-          )}/day, and it is one of the highest-rated cars we run.`,
+        : `The ${v.name} pairs ${v.seats} seats with a driver at ${money(Number(v.pricePerDay))}/day, and it is one of the highest-rated cars we run.`,
       tradeoff: s.negatives[0] ? `Worth knowing: ${s.negatives[0]}.` : "",
       fitScore: Math.max(1, Math.min(100, Math.round(s.score))),
       pricePerDay: Number(v.pricePerDay),
@@ -361,7 +363,7 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
 
   const constraints: string[] = [];
   if (resolved.passengers) constraints.push(`${resolved.passengers} people`);
-  if (resolved.budgetPerDay) constraints.push(`about £${resolved.budgetPerDay} a day`);
+  if (resolved.budgetPerDay) constraints.push(`about ${money(resolved.budgetPerDay)} a day`);
   if (resolved.occasion !== "unknown") constraints.push(`a ${resolved.occasion} trip`);
 
   const summary = constraints.length

@@ -43,7 +43,8 @@ export function SiteFooter() {
           <div>
             <Logo />
             <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-ink-400">
-              Our vision is to provide convenience and help increase your sales business.
+              Our vision is to make renting a car in Bangladesh simple, priced honestly and available the moment you
+              need it.
             </p>
             <div className="mt-6 flex gap-3">
               {SOCIALS.map((s) => (

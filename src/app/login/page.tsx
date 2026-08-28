@@ -71,7 +71,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               nothing is hard-coded.
             </p>
             <footer className="mt-6 text-[14px] text-white/50">
-              Best Auto operations &mdash; 14 vehicles, 11 branches, one source of truth
+              Best Auto operations &mdash; chauffeur-driven across 11 branches, one source of truth
             </footer>
           </blockquote>
         </div>

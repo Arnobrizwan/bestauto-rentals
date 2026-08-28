@@ -30,10 +30,10 @@ type Result = {
 };
 
 const EXAMPLES = [
-  "Family of 6 driving to Cornwall for a week, budget around £150 a day",
-  "Something cheap and automatic for city errands in London",
-  "Wedding car for one day, want it to look spectacular",
-  "Business trip, client pickups from Heathrow, needs to look sharp",
+  "Ten of us going to Cox's Bazar for four days",
+  "Something cheap and automatic for office runs in Dhaka",
+  "Wedding car for one day, want it decorated",
+  "Client pickups from Shahjalal, needs to look sharp",
 ];
 
 /**
@@ -90,8 +90,9 @@ export function AiMatcher() {
             Describe the trip. We&apos;ll pick the car.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-white/60">
-            No filters to fight with. Tell us who&apos;s travelling and what it&apos;s for, and the matcher ranks the
-            live fleet against your actual constraints — and tells you what it traded off.
+            No filters to fight with. Tell us who&apos;s travelling, where you&apos;re going and roughly what you want
+            to spend, and the matcher ranks the live fleet against your real constraints — and tells you what it traded
+            off.
           </p>
         </div>
 
@@ -107,7 +108,7 @@ export function AiMatcher() {
               <input
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
-                placeholder="Six of us, a week in Scotland, under £140 a day…"
+                placeholder="Six of us, a week in Sylhet, under 9000 taka a day…"
                 aria-label="Describe your trip"
                 className="h-13 flex-1 rounded-xl bg-transparent px-4 text-[15px] text-white outline-none placeholder:text-white/35"
               />

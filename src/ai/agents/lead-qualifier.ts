@@ -1,6 +1,8 @@
 import { describeEngine, resolveProvider, type EngineInfo } from "@/ai/provider";
 import { LEAD_QUALIFIER_SYSTEM_V2 } from "@/ai/prompts";
 
+import { formatCurrency } from "@/lib/utils";
+
 import { stripFences } from "./recommender";
 
 export type LeadInput = {
@@ -103,9 +105,10 @@ export function rulesQualify(lead: LeadInput): Omit<LeadScore, "engine" | "laten
 
   // 4. Budget.
   if (lead.budgetPerDay && lead.budgetPerDay > 0) {
-    if (lead.budgetPerDay >= 300) add("Premium budget", 18, `States £${lead.budgetPerDay}/day — exclusive fleet territory.`);
-    else if (lead.budgetPerDay >= 100) add("Solid budget", 12, `States £${lead.budgetPerDay}/day, comfortably above fleet average.`);
-    else add("Budget stated", 7, `States £${lead.budgetPerDay}/day — a real number to quote against.`);
+    const stated = formatCurrency(lead.budgetPerDay, { decimals: false });
+    if (lead.budgetPerDay >= 15000) add("Premium budget", 18, `States ${stated}/day — exclusive fleet territory.`);
+    else if (lead.budgetPerDay >= 6000) add("Solid budget", 12, `States ${stated}/day, comfortably above fleet average.`);
+    else add("Budget stated", 7, `States ${stated}/day — a real number to quote against.`);
   } else {
     add("No budget given", -6, "Nothing to anchor a quote to.");
   }
@@ -126,7 +129,7 @@ export function rulesQualify(lead: LeadInput): Omit<LeadScore, "engine" | "laten
 
   // 7. Named a specific vehicle.
   const namedVehicle =
-    /\b(bugatti|ferrari|porsche|mustang|camaro|panamera|rav4|amg|gt-?r|m4|polo|fiat|i30|expedition|laferrari|chiron)\b/i.test(
+    /\b(corolla|axio|premio|allion|swift|vezel|x-?trail|hiace|noah|microbus|pajero|prado|land\s?cruiser|e-?class|c-?class|mercedes)\b/i.test(
       message,
     );
   if (namedVehicle) add("Named a vehicle", 12, "Already knows which car they want — shorter sales cycle.");
@@ -168,7 +171,7 @@ export function rulesQualify(lead: LeadInput): Omit<LeadScore, "engine" | "laten
     tier === "hot"
       ? lead.phone
         ? `Call ${lead.phone} within the hour and hold a vehicle.`
-        : `Email a held quote today and ask for a phone number.`
+        : `WhatsApp a held quote today and ask for a number.`
       : tier === "warm"
         ? `Send two matched options with prices and ask which dates they have in mind.`
         : `Add to the nurture sequence; no direct outreach yet.`;

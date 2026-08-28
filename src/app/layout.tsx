@@ -14,10 +14,10 @@ export const metadata: Metadata = {
     template: "%s · Best Auto",
   },
   description:
-    "A UK car rental platform with an AI concierge that finds the right car, quotes it honestly, and hands warm leads straight to the team.",
+    "A Bangladeshi car rental platform with an AI concierge that finds the right car, quotes it honestly in taka, and hands warm leads straight to the team.",
   openGraph: {
     title: "Best Auto — Fast and easy way to rent a car",
-    description: "14 cars, 11 branches, and an AI concierge that actually checks availability before it answers.",
+    description: "Chauffeur-driven cars across Bangladesh, 11 branches, and an AI concierge that actually checks availability before it answers.",
     type: "website",
   },
   robots: { index: true, follow: true },

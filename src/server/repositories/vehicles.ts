@@ -112,6 +112,25 @@ export async function getVehiclesByIds(ids: string[]) {
   return db.select().from(vehicles).where(inArray(vehicles.id, ids));
 }
 
+/**
+ * Every branch we operate, not just the ones a vehicle currently calls home.
+ * A customer can collect any car from any branch, so the filter and the search
+ * panel must offer all of them.
+ */
+export const BRANCHES = [
+  "Dhaka Gulshan",
+  "Dhaka Banani",
+  "Dhaka Uttara",
+  "Dhaka Dhanmondi",
+  "Dhaka Motijheel",
+  "Hazrat Shahjalal Airport",
+  "Chattogram Agrabad",
+  "Sylhet City",
+  "Khulna City",
+  "Rajshahi City",
+  "Cox's Bazar",
+] as const;
+
 export async function listFacets() {
   const rows = await db.select().from(vehicles);
   const uniq = <T,>(xs: T[]) => [...new Set(xs)].sort();
@@ -121,9 +140,10 @@ export async function listFacets() {
     bodyTypes: uniq(rows.map((r) => r.bodyType)),
     transmissions: uniq(rows.map((r) => r.transmission)),
     fuels: uniq(rows.map((r) => r.fuel)),
-    locations: uniq(rows.map((r) => r.location)),
+    locations: uniq([...BRANCHES, ...rows.map((r) => r.location)]),
     segments: uniq(rows.map((r) => r.segment)),
-    seats: uniq(rows.map((r) => r.seats)),
+    // Numeric sort: the generic helper sorts lexicographically, which puts 11 before 5.
+    seats: [...new Set(rows.map((r) => r.seats))].sort((a, b) => a - b),
     priceMin: prices.length ? Math.floor(Math.min(...prices)) : 0,
     priceMax: prices.length ? Math.ceil(Math.max(...prices)) : 0,
     count: rows.length,

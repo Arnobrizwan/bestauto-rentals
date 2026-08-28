@@ -5,48 +5,78 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// The whole product prices in GBP - policy copy, quotes and the dashboard all
-// have to agree, so there is exactly one formatter.
-const currency = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  maximumFractionDigits: 2,
-});
+/* ---------------------------------------------------------------------------
+   Money and numbers — Bangladesh.
+
+   All of this is hand-rolled rather than delegated to Intl for two reasons:
+
+   1. Node's `en-BD` does not apply the South Asian lakh/crore digit grouping
+      (it renders 12,500,000 where a Bangladeshi reader expects 1,25,00,000),
+      and it prints "BDT" rather than the ৳ sign.
+   2. Intl's compact notation disagrees between Node's ICU build and the
+      browser's, which previously surfaced as a React hydration mismatch.
+
+   Doing it by hand gives correct local convention and byte-identical output on
+   the server and the client.
+--------------------------------------------------------------------------- */
+
+export const CURRENCY_SYMBOL = "৳";
+
+/** 1234567 -> "12,34,567" (last three digits, then pairs). */
+function groupBangla(digits: string) {
+  if (digits.length <= 3) return digits;
+  const last3 = digits.slice(-3);
+  const rest = digits.slice(0, -3);
+  return `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${last3}`;
+}
+
+export function formatCurrency(value: number, options: { decimals?: boolean } = {}) {
+  const showDecimals = options.decimals ?? Number.isInteger(value) === false;
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const fixed = showDecimals ? abs.toFixed(2) : String(Math.round(abs));
+  const [whole, fraction] = fixed.split(".");
+  return `${sign}${CURRENCY_SYMBOL}${groupBangla(whole)}${fraction ? `.${fraction}` : ""}`;
+}
+
+export function formatNumber(value: number) {
+  const sign = value < 0 ? "-" : "";
+  return `${sign}${groupBangla(String(Math.round(Math.abs(value))))}`;
+}
 
 /**
- * Deterministic compact notation.
- *
- * Intl's `notation: "compact"` disagrees between Node's ICU build and the
- * browser's ("61.4K" vs "61.4k"), which surfaced as a hydration mismatch on the
- * dashboard. Formatting it ourselves keeps server and client byte-identical.
+ * Compact notation in the units Bangladeshi readers actually use: thousand,
+ * lakh (10^5) and crore (10^7) rather than K/M/B.
  */
 const COMPACT_UNITS = [
-  { limit: 1e12, suffix: "T" },
-  { limit: 1e9, suffix: "B" },
-  { limit: 1e6, suffix: "M" },
+  { limit: 1e7, suffix: "Cr" },
+  { limit: 1e5, suffix: "L" },
   { limit: 1e3, suffix: "k" },
 ] as const;
 
-export const formatCurrency = (value: number) => currency.format(value);
 export function formatCompact(value: number) {
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
   for (const unit of COMPACT_UNITS) {
     if (abs >= unit.limit) {
       const scaled = abs / unit.limit;
-      // One decimal below 100, none above - "9.4k", "61.4k", "614k".
       const text = scaled < 100 ? scaled.toFixed(1).replace(/\.0$/, "") : String(Math.round(scaled));
       return `${sign}${text}${unit.suffix}`;
     }
   }
   return `${sign}${Math.round(abs)}`;
 }
-export const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
+
+/** Money in compact form, for chart axes and tight stat labels. */
+export const formatCurrencyCompact = (value: number) => `${CURRENCY_SYMBOL}${formatCompact(value)}`;
+
+/* ------------------------------------------------------------------- Dates */
 
 export const formatDate = (value: Date | string, opts?: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat("en-GB", opts ?? { day: "2-digit", month: "short", year: "numeric" }).format(
-    typeof value === "string" ? new Date(value) : value,
-  );
+  new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dhaka",
+    ...(opts ?? { day: "2-digit", month: "short", year: "numeric" }),
+  }).format(typeof value === "string" ? new Date(value) : value);
 
 /** "15 Mins", "3 Hours", "2 Days" — matches the Figma transaction rows. */
 export function timeAgo(value: Date | string) {

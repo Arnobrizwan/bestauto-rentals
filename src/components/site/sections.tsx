@@ -4,17 +4,17 @@ import Link from "next/link";
 const STEPS = [
   {
     title: "Choose Location",
-    body: "Pick from eleven branches across the UK, or have the car delivered to a terminal, a hotel or your front door.",
+    body: "Pick from eleven branches across Dhaka, Chattogram, Sylhet and beyond, or have the car brought to your gate.",
     icon: "M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   },
   {
     title: "Pick-up Date",
-    body: "Set your dates and we hold the vehicle. Free cancellation up to 48 hours before you collect, no questions asked.",
+    body: "Set your dates and we hold the vehicle with a driver assigned. Free cancellation up to 24 hours before pick-up.",
     icon: "M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M8 3v4M16 3v4M4 11h16",
   },
   {
     title: "Book your car",
-    body: "Pay online, collect the keys, drive away. Everything is confirmed by email before you leave the page.",
+    body: "Pay by bKash, Nagad or card. Your driver arrives on time and the confirmation reaches you before you close the page.",
     icon: "M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15",
   },
 ];
@@ -73,17 +73,17 @@ export function HowItWorks() {
 const REASONS = [
   {
     title: "Customer Support",
-    body: "Extremely responsive customer support provided by the team at Best Auto UK — plus an AI concierge that answers the routine questions instantly, day or night.",
+    body: "A team that actually answers the phone, plus an AI concierge that handles the routine questions instantly — in the middle of the night, on a holiday, during Eid.",
     icon: "M15.5 16.5 14 18a13.4 13.4 0 0 1-8-8l1.5-1.5a1.4 1.4 0 0 0 .3-1.6L6.5 4.2A1.4 1.4 0 0 0 5.2 3.4H3.4A1.4 1.4 0 0 0 2 4.9 17 17 0 0 0 19.1 22a1.4 1.4 0 0 0 1.5-1.4v-1.8a1.4 1.4 0 0 0-.8-1.3l-2.7-1.3a1.4 1.4 0 0 0-1.6.3Z",
   },
   {
     title: "Best Price Guaranteed",
-    body: "Extremely best prices for all category people offered at Best Auto UK. Multi-day discounts apply automatically — 12% from a week, 25% from a month.",
+    body: "Straight taka pricing with the driver included and fuel at cost — no surprise line items at handover. Multi-day discounts apply automatically: 12% from a week, 25% from a month.",
     icon: "M20.6 13.4 12.4 21.6a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4V4a2 2 0 0 1 2-2h9a2 2 0 0 1 1.4.6l6.4 6.4a2 2 0 0 1 0 2.8Z M7 7h.01",
   },
   {
     title: "Many Location",
-    body: "Extremely the best location and available near the big cities. Eleven branches across the UK, with delivery within 20 miles of every one of them.",
+    body: "Eleven branches from Gulshan to Cox's Bazar, free delivery anywhere inside Dhaka city, and airport pick-up with a name board at Shahjalal.",
     icon: "M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   },
 ];
@@ -105,8 +105,8 @@ export function WhyChooseUs() {
           <div className="relative" data-reveal>
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-ink-100">
               <Image
-                src="https://images.unsplash.com/photo-1502877338535-766e1452684a"
-                alt="A BMW M4 Competition parked outside the Best Auto Canary Wharf branch"
+                src="https://images.unsplash.com/photo-1627395427294-d01af2f943ac"
+                alt="A Honda Vezel from the Best Auto fleet at the Gulshan branch"
                 fill
                 sizes="(max-width: 1024px) 90vw, 45vw"
                 className="object-cover"
@@ -163,11 +163,11 @@ export function PromoPanels() {
           <div className="relative">
             <span className="text-xs font-semibold tracking-[0.16em] text-brand-300 uppercase">Corporate accounts</span>
             <h3 className="mt-4 max-w-sm font-display text-2xl font-semibold lg:text-3xl">
-              Three cars or more? Get invoiced monthly.
+Three cars or more? Get invoiced monthly.
             </h3>
             <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/60">
-              Thirty-day terms, one consolidated invoice, and a named account manager. Set up takes a short credit check
-              and about a day.
+              Fifteen-day terms, one consolidated invoice with a VAT challan, and a named account manager. Setup takes a
+              short verification and about a day.
             </p>
           </div>
           <Link
@@ -189,8 +189,8 @@ export function PromoPanels() {
               The longer you keep it, the less it costs.
             </h3>
             <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-ink-400">
-              Discounts apply automatically at checkout — no code, no haggling. You always see the discounted total
-              before you pay.
+              Discounts apply automatically at checkout — no code, no haggling. You always see the discounted total in
+              taka before you pay.
             </p>
           </div>
           <dl className="relative mt-8 grid grid-cols-4 gap-2">

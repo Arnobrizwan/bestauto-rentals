@@ -15,9 +15,9 @@ type Result = {
 };
 
 const SAMPLES = [
-  "I need the BMW M4 from 14th March for 5 days, budget is around £250 a day. Can you confirm today?",
+  "I need the Prado from 14th March for 5 days, budget is around 20000 taka a day. Can you confirm today?",
   "Just looking, no rush. Might need something someday.",
-  "We need 6 vehicles on a rolling monthly contract for our field team. Please send commercial terms.",
+  "We need 6 vehicles on a rolling monthly contract for our Sylhet field team. Please send corporate rates.",
 ];
 
 /**

@@ -8,12 +8,12 @@ export const maxDuration = 45;
 
 const schema = z.object({
   brief: z.string().max(600).optional(),
-  passengers: z.number().int().min(1).max(9).optional(),
+  passengers: z.number().int().min(1).max(15).optional(),
   budgetPerDay: z.number().min(0).max(10000).optional(),
   days: z.number().int().min(1).max(90).optional(),
   occasion: z.enum(["family", "business", "leisure", "special", "city", "unknown"]).optional(),
   transmission: z.enum(["Automatic", "Manual"]).optional(),
-  fuel: z.enum(["Petrol", "Diesel", "Hybrid", "Electric"]).optional(),
+  fuel: z.enum(["Petrol", "Octane", "Hybrid", "Diesel"]).optional(),
   luggage: z.number().int().min(0).max(8).optional(),
   location: z.string().max(80).optional(),
 });

@@ -12,9 +12,9 @@ import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 export const dynamic = "force-dynamic";
 
 const TRUST = [
-  { value: "11", label: "UK branches" },
+  { value: "11", label: "Branches" },
   { value: "24/7", label: "AI concierge" },
-  { value: "48h", label: "Free cancellation" },
+  { value: "24h", label: "Free cancellation" },
   { value: "4.8", label: "Average rating" },
 ];
 
@@ -60,7 +60,7 @@ export default async function HomePage() {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-[13px] font-medium text-ink-500 shadow-card">
                 <span className="size-1.5 rounded-full bg-success" />
-                100% Trusted Car rental platform in the UK
+                100% Trusted Car rental platform in Bangladesh
               </p>
 
               <h1 className="mt-6 font-display text-[38px] leading-[1.06] font-bold tracking-tight text-ink-900 uppercase sm:text-[52px] lg:text-[44px] xl:text-[54px]">
@@ -70,8 +70,8 @@ export default async function HomePage() {
               </h1>
 
               <p className="mt-6 max-w-lg text-[16px] leading-relaxed text-ink-400">
-                Our car rental online booking system is designed to meet the specific needs of car rental business
-                owners. Easy to use, honest about price, and quick to answer.
+                Chauffeur-driven cars across Dhaka and eleven branches nationwide. Honest rates in taka, fuel billed at
+                cost, and an assistant that checks real availability before it answers.
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -99,8 +99,8 @@ export default async function HomePage() {
             <div className="relative">
               <div className="relative aspect-[4/3] overflow-hidden rounded-3xl rounded-tr-[80px] bg-ink-100 lg:aspect-[5/4]">
                 <Image
-                  src="https://images.unsplash.com/photo-1503376780353-7e6692767b70"
-                  alt="A Porsche Panamera 4S from the Best Auto fleet"
+                  src="https://images.unsplash.com/photo-1630826362226-a509049bcdbf"
+                  alt="A Toyota Land Cruiser Prado from the Best Auto fleet"
                   fill
                   priority
                   sizes="(max-width: 1024px) 92vw, 52vw"

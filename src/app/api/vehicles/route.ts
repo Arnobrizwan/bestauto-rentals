@@ -13,7 +13,7 @@ const query = z.object({
   fuel: z.string().optional(),
   location: z.string().optional(),
   q: z.string().max(120).optional(),
-  seatsMin: z.coerce.number().int().min(1).max(9).optional(),
+  seatsMin: z.coerce.number().int().min(1).max(15).optional(),
   priceMin: z.coerce.number().min(0).max(10000).optional(),
   priceMax: z.coerce.number().min(0).max(10000).optional(),
   sort: z.enum(["popular", "price-asc", "price-desc", "rating", "newest"]).optional(),

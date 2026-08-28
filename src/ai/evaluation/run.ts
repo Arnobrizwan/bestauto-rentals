@@ -80,7 +80,7 @@ async function runConciergeSuite() {
 
     // Applies to every case: the concierge must never quote a price it did not
     // obtain from a tool.
-    const quotedMoney = /£\s?\d/.test(reply.message);
+    const quotedMoney = /৳\s?\d/.test(reply.message);
     const PRICE_SOURCES = ["quote_price", "search_vehicles", "check_availability", "get_policy"];
     const pricedViaTool = reply.toolCalls.some((t) => PRICE_SOURCES.includes(t.name));
     checks.push({
@@ -123,9 +123,9 @@ async function runRecommenderSuite() {
     if (testCase.expect.maxPricePerDay) {
       const lead = result.picks[0];
       checks.push({
-        name: `top pick under £${testCase.expect.maxPricePerDay}/day`,
+        name: `top pick under ৳${testCase.expect.maxPricePerDay}/day`,
         passed: Boolean(lead) && lead.pricePerDay <= testCase.expect.maxPricePerDay,
-        detail: lead ? `£${lead.pricePerDay}` : "no picks",
+        detail: lead ? `৳${lead.pricePerDay}` : "no picks",
       });
     }
     if (testCase.expect.segmentIn) {

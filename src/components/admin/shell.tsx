@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { AdminSidebar } from "./sidebar";
 import { AdminTopbar } from "./topbar";
 
@@ -19,11 +21,19 @@ export function AdminShell({
   children: React.ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="min-h-dvh bg-canvas font-admin">
-      <AdminSidebar open={navOpen} onClose={() => setNavOpen(false)} hotLeads={hotLeads} user={user} />
-      <div className="lg:pl-[248px]">
+      <AdminSidebar
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        hotLeads={hotLeads}
+        user={user}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((v) => !v)}
+      />
+      <div className={cn("transition-[padding] duration-300", collapsed ? "lg:pl-[76px]" : "lg:pl-[248px]")}>
         <AdminTopbar onMenu={() => setNavOpen(true)} engine={engine} notifications={hotLeads} user={user} />
         <main className="px-4 py-5 lg:px-6 lg:py-6">{children}</main>
         <footer className="flex flex-col gap-1 border-t border-line px-4 py-4 text-[12px] text-ink-400 sm:flex-row sm:items-center sm:justify-between lg:px-6">

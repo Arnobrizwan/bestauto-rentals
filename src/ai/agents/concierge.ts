@@ -2,6 +2,7 @@ import { describeEngine, resolveProvider, type AiMessage, type ContentBlock, typ
 import { CONCIERGE_SYSTEM_V3 } from "@/ai/prompts";
 import { EXTRA_PRICES, TOOL_SPECS, durationDiscount, executeTool, type ToolContext } from "@/ai/tools";
 import { searchKnowledge } from "@/ai/tools/knowledge";
+import { formatCurrency } from "@/lib/utils";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -43,7 +44,7 @@ export type Slots = {
   dropoffDate?: string;
   location?: string;
   transmission?: "Automatic" | "Manual";
-  fuel?: "Petrol" | "Diesel" | "Hybrid" | "Electric";
+  fuel?: "Petrol" | "Octane" | "Hybrid" | "Diesel";
   segment?: "small" | "large" | "exclusive";
   name?: string;
   email?: string;
@@ -52,45 +53,51 @@ export type Slots = {
 };
 
 const LOCATIONS = [
-  "London Heathrow",
-  "London Kings Cross",
-  "London Mayfair",
-  "London Canary Wharf",
-  "Manchester City",
-  "Birmingham Central",
-  "Edinburgh Airport",
-  "Leeds City",
-  "Bristol Temple",
-  "Brighton Seafront",
-  "Glasgow Central",
+  "Dhaka Gulshan",
+  "Dhaka Banani",
+  "Dhaka Uttara",
+  "Dhaka Dhanmondi",
+  "Dhaka Motijheel",
+  "Hazrat Shahjalal Airport",
+  "Chattogram Agrabad",
+  "Sylhet City",
+  "Khulna City",
+  "Rajshahi City",
+  "Cox's Bazar",
 ];
 
+/** Ordered longest-first at lookup time so "corolla axio" beats "corolla". */
 const VEHICLE_ALIASES: Record<string, string> = {
-  panamera: "porsche-panamera-4s",
-  porsche: "porsche-panamera-4s",
-  mustang: "ford-mustang-gt",
-  camaro: "chevrolet-camaro-rs",
-  polo: "volkswagen-polo",
-  expedition: "ford-expedition",
-  i30: "hyundai-i30-n",
-  "amg gt": "mercedes-amg-gt",
-  "gt-r": "nissan-gt-r",
-  gtr: "nissan-gt-r",
-  m4: "bmw-m4-competition",
-  bmw: "bmw-m4-competition",
-  fiat: "fiat-500",
-  "500": "fiat-500",
-  chiron: "bugatti-chiron",
-  bugatti: "bugatti-chiron",
-  rav4: "toyota-rav4-hybrid",
-  toyota: "toyota-rav4-hybrid",
-  laferrari: "ferrari-laferrari",
-  ferrari: "ferrari-laferrari",
-  c63: "mercedes-amg-c63",
+  swift: "suzuki-swift",
+  suzuki: "suzuki-swift",
+  "corolla axio": "toyota-corolla-axio-hybrid",
+  axio: "toyota-corolla-axio-hybrid",
+  corolla: "toyota-corolla",
+  premio: "toyota-premio",
+  allion: "toyota-premio",
+  vezel: "honda-vezel",
+  honda: "honda-vezel",
+  "x-trail": "nissan-x-trail",
+  xtrail: "nissan-x-trail",
+  nissan: "nissan-x-trail",
+  hiace: "toyota-hiace-microbus",
+  microbus: "toyota-hiace-microbus",
+  noah: "toyota-hiace-microbus",
+  pajero: "mitsubishi-pajero-sport",
+  mitsubishi: "mitsubishi-pajero-sport",
+  "c-class": "mercedes-benz-c-class",
+  "c class": "mercedes-benz-c-class",
+  prado: "toyota-land-cruiser-prado",
+  "e-class": "mercedes-benz-e-class",
+  "e class": "mercedes-benz-e-class",
+  mercedes: "mercedes-benz-e-class",
+  "land cruiser": "toyota-land-cruiser-v8",
+  "v8": "toyota-land-cruiser-v8",
 };
 
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, fifteen: 15,
 };
 
 export function extractSlots(turns: ChatTurn[], previous: Slots = {}): Slots {
@@ -112,9 +119,9 @@ export function extractSlots(turns: ChatTurn[], previous: Slots = {}): Slots {
   if (/\bfamily\b/.test(text) && !slots.passengers) slots.passengers = 5;
 
   const budget =
-    /(?:£|\bgbp\s*)(\d{2,4})/i.exec(userText)?.[1] ??
-    /(\d{2,4})\s*(?:pounds?|quid)?\s*(?:a|per|\/)\s*day/i.exec(userText)?.[1] ??
-    /(?:under|below|max(?:imum)?|up to|around|about)\s*(?:£)?\s*(\d{2,4})/i.exec(userText)?.[1];
+    /(?:৳|\btk\.?\s*|\bbdt\s*)(\d{3,6})/i.exec(userText)?.[1] ??
+    /(\d{3,6})\s*(?:taka|tk|bdt)?\s*(?:a|per|\/)\s*day/i.exec(userText)?.[1] ??
+    /(?:under|below|max(?:imum)?|up to|around|about)\s*(?:৳|tk\.?\s*)?\s*(\d{3,6})/i.exec(userText)?.[1];
   if (budget) slots.budgetPerDay = Number(budget);
 
   const days = /(\d+)\s*(?:days?|nights?)/i.exec(userText)?.[1];
@@ -126,29 +133,39 @@ export function extractSlots(turns: ChatTurn[], previous: Slots = {}): Slots {
   const iso = /\b(\d{4}-\d{2}-\d{2})\b/.exec(userText)?.[1];
   if (iso) slots.pickupDate = iso;
 
-  const location = LOCATIONS.find((l) => text.includes(l.toLowerCase()));
+  // A city can be where they are collecting from or where they are going. Only
+  // the former is a branch: "going to Cox's Bazar" is a destination, and
+  // filtering the fleet to the Cox's Bazar branch would wrongly return nothing.
+  const isDestination = (name: string) =>
+    new RegExp(`\\b(?:to|towards|visit|visiting|trip to|going to|travel to)\\s+(?:the\\s+)?${name}`, "i").test(userText);
+
+  const location = LOCATIONS.find((l) => text.includes(l.toLowerCase()) && !isDestination(l));
   if (location) slots.location = location;
   else {
-    const city = ["london", "manchester", "birmingham", "edinburgh", "leeds", "bristol", "brighton", "glasgow"].find(
-      (c) => text.includes(c),
+    const city = ["dhaka", "chattogram", "chittagong", "sylhet", "khulna", "rajshahi", "cox"].find(
+      (c) => text.includes(c) && !isDestination(c),
     );
-    if (city) slots.location = LOCATIONS.find((l) => l.toLowerCase().startsWith(city));
+    if (city) {
+      const normalised = city === "chittagong" ? "chattogram" : city;
+      slots.location = LOCATIONS.find((l) => l.toLowerCase().includes(normalised));
+    }
+    if (/\bairport|shahjalal\b/.test(text)) slots.location = "Hazrat Shahjalal Airport";
   }
 
   if (/\bautomatic\b/.test(text)) slots.transmission = "Automatic";
   else if (/\bmanual|stick shift\b/.test(text)) slots.transmission = "Manual";
 
   if (/\bhybrid\b/.test(text)) slots.fuel = "Hybrid";
-  else if (/\belectric|\bev\b/.test(text)) slots.fuel = "Electric";
   else if (/\bdiesel\b/.test(text)) slots.fuel = "Diesel";
+  else if (/\boctane\b/.test(text)) slots.fuel = "Octane";
 
-  if (/\b(small|compact|city car|cheap|budget|economical)\b/.test(text)) slots.segment = "small";
-  if (/\b(suv|7 seater|seven seater|estate|big car|large)\b/.test(text)) slots.segment = "large";
-  if (/\b(supercar|hypercar|exotic|luxury|exclusive|wedding|prestige)\b/.test(text)) slots.segment = "exclusive";
+  if (/\b(small|compact|city car|cheap|budget|economical|sedan|private car)\b/.test(text)) slots.segment = "small";
+  if (/\b(suv|microbus|micro bus|hiace|noah|7 seater|seven seater|big car|large|van)\b/.test(text)) slots.segment = "large";
+  if (/\b(luxury|exclusive|wedding|prestige|vip|premium|chauffeur)\b/.test(text)) slots.segment = "exclusive";
 
-  for (const [alias, slug] of Object.entries(VEHICLE_ALIASES)) {
+  for (const alias of Object.keys(VEHICLE_ALIASES).sort((a, b) => b.length - a.length)) {
     if (text.includes(alias)) {
-      slots.vehicleSlug = slug;
+      slots.vehicleSlug = VEHICLE_ALIASES[alias];
       break;
     }
   }
@@ -184,7 +201,11 @@ export type Intent =
   | "unknown";
 
 const POLICY_HINT =
-  /\b(insurance|excess|deposit|licence|license|age|fuel|petrol|mileage|miles|cancel|refund|deliver|collect|child seat|abroad|europe|pay|invoice|additional driver|young driver)\b|how old|old enough|minimum age|years old/i;
+  /\b(insurance|excess|deposit|advance|licence|license|brta|nid|document|documents|paperwork|age|fuel|petrol|octane|diesel|cng|mileage|kilometre|kilometer|km|cancel|cancellation|refund|deliver|delivery|collect|collection|child seat|payment|bkash|nagad|rocket|invoice|vat|challan|overtime|monsoon|flood|waterlogged|decoration|chauffeur)\b|self[\s-]?drive|driver included|is the driver|driver charge|how old|old enough|minimum age|years old/i;
+
+/** Vehicle names, used to tell a priced enquiry apart from a policy question. */
+const NAMES_VEHICLE =
+  /\b(corolla|axio|premio|allion|swift|vezel|x-?trail|hiace|microbus|noah|pajero|prado|land\s?cruiser|e-?class|c-?class|mercedes)\b/i;
 
 export function classifyIntent(message: string, slots: Slots): Intent {
   const text = message.toLowerCase().trim();
@@ -196,9 +217,15 @@ export function classifyIntent(message: string, slots: Slots): Intent {
   if (/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/.test(message)) return "contact";
   if (/\b(book it|reserve|i'?ll take|go ahead|sign me up|yes please book)\b/.test(text)) return "contact";
 
-  if (/\b(how much|price|cost|quote|total|per day|charge|£|\bfee\b)\b/.test(text)) return "quote";
+  // Policy is checked before pricing: "how much deposit do you take" and "is
+  // the driver included in the price" are policy questions that happen to
+  // contain pricing words. A named vehicle with a duration is a real quote
+  // request, so that still wins.
+  const hasDuration = /\b\d+\s*(?:days?|nights?|weeks?)\b/.test(text);
+  if (POLICY_HINT.test(text) && !(NAMES_VEHICLE.test(text) && hasDuration)) return "policy";
+
+  if (/\b(how much|price|cost|quote|total|rate|per day|charge|taka|tk|৳|\bfee\b)\b/.test(text)) return "quote";
   if (/\b(available|availability|free on|in stock|can i get|do you have.*(on|for)\s)\b/.test(text)) return "availability";
-  if (POLICY_HINT.test(text)) return "policy";
 
   if (
     /\b(car|vehicle|suv|hatchback|sedan|coupe|convertible|seater|drive|rent|hire|need|looking for|recommend|suggest|show me|options)\b/.test(
@@ -220,7 +247,7 @@ export function classifyIntent(message: string, slots: Slots): Intent {
    Rules engine
    =========================================================================== */
 
-const money = (n: number) => `£${n.toFixed(n % 1 === 0 ? 0 : 2)}`;
+const money = (n: number) => formatCurrency(n, { decimals: false });
 
 function listCars(cars: ConciergeVehicleCard[]) {
   return cars
@@ -265,9 +292,9 @@ function suggestionsFor(slots: Slots, cards: ConciergeVehicleCard[]): string[] {
   const out: string[] = [];
   if (cards[0]) out.push(`How much for the ${cards[0].name.split(" ").slice(0, 2).join(" ")} for a week?`);
   if (!slots.passengers) out.push("I need something for 5 people");
-  if (!slots.budgetPerDay) out.push("Keep it under £80 a day");
-  out.push("What's the insurance excess?");
-  out.push("Do you deliver to Heathrow?");
+  if (!slots.budgetPerDay) out.push("Keep it under 5000 taka a day");
+  out.push("Is the driver included?");
+  out.push("Do you do airport pickup?");
   return [...new Set(out)].slice(0, 4);
 }
 
@@ -287,7 +314,11 @@ export async function rulesConcierge(
         message:
           "Hello — I look after bookings at Best Auto. Tell me roughly what you need: how many people, when, and what you'd like to spend a day, and I'll pull up the right cars.",
         vehicles: [],
-        suggestions: ["Something cheap for city driving", "A 7-seater for a family holiday", "Show me the exclusive fleet"],
+        suggestions: [
+          "Something cheap for driving around Dhaka",
+          "A microbus for a family trip to Cox's Bazar",
+          "A wedding car with a chauffeur",
+        ],
         toolCalls,
         handoff: false,
       };
@@ -308,7 +339,7 @@ export async function rulesConcierge(
         message:
           "Of course. Leave me a name and an email and I'll put you straight through to the team — they usually come back within the hour during working days.",
         vehicles: [],
-        suggestions: ["My name is Alex, alex@example.com"],
+        suggestions: ["My name is Tanvir, tanvir@example.com"],
         toolCalls,
         handoff: true,
       };
@@ -335,7 +366,7 @@ export async function rulesConcierge(
           message:
             "I don't have a documented answer for that one, so I'd rather not guess. Leave me your name and email and someone from the team will confirm it properly.",
           vehicles: [],
-          suggestions: ["What's the insurance excess?", "How old do I need to be?"],
+          suggestions: ["Is the driver included?", "What deposit do you take?"],
           toolCalls,
           handoff: true,
         };
@@ -346,7 +377,7 @@ export async function rulesConcierge(
       return {
         message: `${primary.body}${follow ? `\n\nAnything else you want to check, or shall I start pulling up cars? ${follow}` : ""}`,
         vehicles: [],
-        suggestions: ["Show me what's available", "What's the deposit?", "Do you deliver?"],
+        suggestions: ["Show me what's available", "What's the deposit?", "Do you do airport pickup?"],
         toolCalls,
         handoff: false,
       };
@@ -407,6 +438,14 @@ export async function rulesConcierge(
         const found = await search(slots, 3);
         record("search_vehicles", slots, found.raw);
         cards = found.cards;
+
+        // Branch and budget are softer than party size — drop them before
+        // telling someone we have nothing.
+        if (!cards.length) {
+          const relaxed = await search({ ...slots, location: undefined, budgetPerDay: undefined }, 3);
+          record("search_vehicles", { relaxed: true }, relaxed.raw);
+          cards = relaxed.cards;
+        }
         slug = cards[0]?.slug;
       }
 
@@ -415,7 +454,7 @@ export async function rulesConcierge(
           message:
             "Nothing matches that brief right now. If you can stretch the budget a little or take a different branch, I'll find you something — which is easier?",
           vehicles: [],
-          suggestions: ["Raise my budget to £120", "Try a different branch"],
+          suggestions: ["Raise my budget to 8000 taka", "Try a different branch"],
           toolCalls,
           handoff: false,
         };
@@ -445,7 +484,7 @@ export async function rulesConcierge(
       const discountLine = q.discount > 0 ? ` That includes a ${Math.round(q.discountRate * 100)}% multi-day discount, saving ${money(q.discount)}.` : "";
 
       return {
-        message: `The ${q.vehicle} is ${money(q.pricePerDay)} a day, so ${q.days} days comes to ${money(q.total)}.${discountLine} Full insurance is ${money(EXTRA_PRICES["Full insurance"])} a day on top if you'd like the excess taken to zero.`,
+        message: `The ${q.vehicle} is ${money(q.pricePerDay)} a day with a driver, so ${q.days} days comes to ${money(q.total)}.${discountLine} Fuel is billed at cost on top, and full protection is ${money(EXTRA_PRICES["Full insurance"])} a day if you want zero liability.`,
         vehicles: cards,
         suggestions: ["Add full insurance", "Is it available next week?", "Show me a cheaper option"],
         toolCalls,
@@ -467,7 +506,7 @@ export async function rulesConcierge(
 
       const summaryBits = [
         slots.passengers ? `${slots.passengers} passengers` : null,
-        slots.budgetPerDay ? `budget around £${slots.budgetPerDay}/day` : null,
+        slots.budgetPerDay ? `budget around ${formatCurrency(slots.budgetPerDay, { decimals: false })}/day` : null,
         slots.days ? `${slots.days} days` : null,
         slots.location ? `collecting from ${slots.location}` : null,
         slots.vehicleSlug ? `interested in ${slots.vehicleSlug.replace(/-/g, " ")}` : null,
@@ -535,7 +574,7 @@ export async function rulesConcierge(
 
       const constraints = [
         slots.passengers ? `${slots.passengers} people` : null,
-        slots.budgetPerDay ? `under about £${slots.budgetPerDay} a day` : null,
+        slots.budgetPerDay ? `under about ${formatCurrency(slots.budgetPerDay, { decimals: false })} a day` : null,
         slots.transmission ? slots.transmission.toLowerCase() : null,
         slots.location ? `from ${slots.location}` : null,
       ].filter(Boolean);

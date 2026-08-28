@@ -1,6 +1,7 @@
 import { emit } from "@/automation/engine";
 import { EXTRA_PRICES, durationDiscount } from "@/ai/tools";
 import { log } from "@/lib/observability/logger";
+import { formatCurrency } from "@/lib/utils";
 import { sanitizeText } from "@/lib/security/http";
 import { countOverlapping, insertBooking, updateBookingStatus } from "@/server/repositories/bookings";
 import { upsertCustomer } from "@/server/repositories/customers";
@@ -135,7 +136,7 @@ export async function createBooking(input: CreateBookingInput) {
       days,
       pickupDate: pickupAt.toISOString().slice(0, 10),
       pickupLocation: booking.pickupLocation,
-      total: `GBP ${priced.total.toFixed(2)}`,
+      total: formatCurrency(priced.total),
       totalValue: priced.total,
     },
   });

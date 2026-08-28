@@ -17,13 +17,14 @@ import { searchKnowledge } from "./knowledge";
 const searchVehiclesInput = z.object({
   query: z.string().optional().describe("Free text, e.g. 'cheap automatic hatchback'"),
   segment: z.enum(["small", "large", "exclusive", "popular", "all"]).optional(),
-  seatsMin: z.number().int().min(1).max(9).optional().describe("Minimum seats required"),
-  priceMax: z.number().min(0).optional().describe("Maximum price per day in GBP"),
+  // Up to 15: microbuses are a core category in Bangladesh, not an edge case.
+  seatsMin: z.number().int().min(1).max(15).optional().describe("Minimum seats required"),
+  priceMax: z.number().min(0).optional().describe("Maximum price per day in BDT (taka)"),
   priceMin: z.number().min(0).optional(),
   transmission: z.enum(["Automatic", "Manual"]).optional(),
-  fuel: z.enum(["Petrol", "Diesel", "Hybrid", "Electric"]).optional(),
+  fuel: z.enum(["Petrol", "Octane", "Hybrid", "Diesel"]).optional(),
   bodyType: z.string().optional(),
-  location: z.string().optional().describe("Branch name, e.g. 'London Heathrow'"),
+  location: z.string().optional().describe("Branch name, e.g. 'Dhaka Gulshan'"),
   limit: z.number().int().min(1).max(8).optional(),
 });
 
@@ -36,7 +37,7 @@ const checkAvailabilityInput = z.object({
 const quotePriceInput = z.object({
   slug: z.string(),
   days: z.number().int().min(1).max(90),
-  extras: z.array(z.string()).optional().describe("Any of: Additional driver, Child seat, Full insurance, Unlimited mileage, Airport delivery, Wi-Fi hotspot"),
+  extras: z.array(z.string()).optional().describe("Any of: Additional driver, Child seat, Full insurance, Unlimited mileage, Airport pickup, Wi-Fi hotspot"),
 });
 
 const getPolicyInput = z.object({
@@ -56,13 +57,14 @@ const captureLeadInput = z.object({
   partySize: z.number().int().optional(),
 });
 
+/** Extras priced in BDT per day, except airport pickup which is a one-off. */
 export const EXTRA_PRICES: Record<string, number> = {
-  "Additional driver": 11,
-  "Child seat": 8,
-  "Full insurance": 19,
-  "Unlimited mileage": 12,
-  "Airport delivery": 45,
-  "Wi-Fi hotspot": 6,
+  "Additional driver": 800,
+  "Child seat": 500,
+  "Full insurance": 1200,
+  "Unlimited mileage": 900,
+  "Airport pickup": 1500,
+  "Wi-Fi hotspot": 400,
 };
 
 /** Multi-day discounts — the same ladder the booking service charges. */
@@ -97,7 +99,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "get_policy",
     description:
-      "Look up company policy (insurance, deposit, licence and age, fuel, mileage, cancellation, delivery, child seats, travelling abroad, payment).",
+      "Look up company policy (driver included vs self-drive, licence and NID, insurance, deposit, fuel, mileage, cancellation, airport pickup, child seats, monsoon and flooding, wedding hires, intercity routes, payment).",
     inputSchema: jsonSchema(getPolicyInput),
   },
   {
@@ -214,7 +216,7 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
             extras: extras.map((e) => ({ name: e, perDay: EXTRA_PRICES[e], total: EXTRA_PRICES[e] * input.days })),
             extrasTotal: Number(extrasTotal.toFixed(2)),
             total: Number(subtotal.toFixed(2)),
-            currency: "GBP",
+            currency: "BDT",
           },
         };
       }

@@ -91,8 +91,8 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
             The fleet
           </h1>
           <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-400">
-            {facets.count} cars across {facets.locations.length} UK branches. Prices include VAT, breakdown cover and
-            250 miles a day.
+            {facets.count} cars across {facets.locations.length} branches. Rates include a driver and 120km a day inside
+            Dhaka; fuel is billed at cost.
           </p>
           {pickup && dropoff && (
             <p className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-[13px] text-ink-500">

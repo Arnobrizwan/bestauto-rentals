@@ -21,68 +21,83 @@ const between = (rng: () => number, min: number, max: number) =>
   Math.floor(rng() * (max - min + 1)) + min;
 
 /* -------------------------------------------------------------- markets */
+
+/**
+ * Domestic demand dominates, but a meaningful slice of bookings is placed from
+ * abroad — the diaspora arranging a car before they land, and corporate travel
+ * from the Gulf and Southeast Asia. Codes are ISO 3166-1 numeric so they join
+ * straight onto the world-map shapes.
+ */
 export const MARKETS = [
-  { country: "United Kingdom", code: "826", weight: 34, cities: ["London", "Manchester", "Leeds", "Bristol", "Glasgow"] },
-  { country: "United States", code: "840", weight: 14, cities: ["New York", "Austin", "Chicago", "Seattle"] },
-  { country: "Germany", code: "276", weight: 9, cities: ["Berlin", "Munich", "Hamburg"] },
-  { country: "France", code: "250", weight: 7, cities: ["Paris", "Lyon", "Nice"] },
-  { country: "Spain", code: "724", weight: 6, cities: ["Madrid", "Barcelona", "Valencia"] },
-  { country: "Netherlands", code: "528", weight: 5, cities: ["Amsterdam", "Rotterdam"] },
-  { country: "Italy", code: "380", weight: 5, cities: ["Milan", "Rome"] },
-  { country: "United Arab Emirates", code: "784", weight: 4, cities: ["Dubai", "Abu Dhabi"] },
-  { country: "Canada", code: "124", weight: 4, cities: ["Toronto", "Vancouver"] },
-  { country: "Australia", code: "036", weight: 3, cities: ["Sydney", "Melbourne"] },
-  { country: "Poland", code: "616", weight: 3, cities: ["Warsaw", "Krakow"] },
-  { country: "India", code: "356", weight: 2, cities: ["Mumbai", "Bengaluru"] },
-  { country: "Brazil", code: "076", weight: 2, cities: ["Sao Paulo", "Rio de Janeiro"] },
-  { country: "South Africa", code: "710", weight: 1, cities: ["Cape Town"] },
-  { country: "Japan", code: "392", weight: 1, cities: ["Tokyo"] },
+  {
+    country: "Bangladesh",
+    code: "050",
+    weight: 52,
+    cities: ["Dhaka", "Chattogram", "Sylhet", "Khulna", "Rajshahi", "Narayanganj", "Gazipur", "Cox's Bazar"],
+  },
+  { country: "India", code: "356", weight: 8, cities: ["Kolkata", "Delhi", "Chennai"] },
+  { country: "United Kingdom", code: "826", weight: 7, cities: ["London", "Birmingham", "Oldham"] },
+  { country: "United States", code: "840", weight: 6, cities: ["New York", "Detroit", "Paterson"] },
+  { country: "Saudi Arabia", code: "682", weight: 5, cities: ["Riyadh", "Jeddah"] },
+  { country: "United Arab Emirates", code: "784", weight: 5, cities: ["Dubai", "Abu Dhabi"] },
+  { country: "Malaysia", code: "458", weight: 4, cities: ["Kuala Lumpur", "Penang"] },
+  { country: "Qatar", code: "634", weight: 3, cities: ["Doha"] },
+  { country: "Australia", code: "036", weight: 2, cities: ["Sydney", "Melbourne"] },
+  { country: "Canada", code: "124", weight: 2, cities: ["Toronto"] },
+  { country: "Japan", code: "392", weight: 2, cities: ["Tokyo"] },
+  { country: "Italy", code: "380", weight: 2, cities: ["Rome"] },
+  { country: "Oman", code: "512", weight: 1, cities: ["Muscat"] },
+  { country: "Kuwait", code: "414", weight: 1, cities: ["Kuwait City"] },
+  { country: "South Korea", code: "410", weight: 1, cities: ["Seoul"] },
 ] as const;
 
 const FIRST = [
-  "Amelia", "Noah", "Zara", "Marcus", "Priya", "Tomas", "Ines", "Karl", "Yuki", "Diego",
-  "Hannah", "Idris", "Lena", "Oscar", "Fatima", "Ben", "Sofia", "Mateo", "Chloe", "Ravi",
-  "Elena", "Jonas", "Nadia", "Felix", "Aisha", "Viezh", "Sam", "Marta", "Leo", "Nora",
-  "Dmitri", "Grace", "Hugo", "Isabel", "Kwame", "Mia", "Otto", "Rosa", "Theo", "Wren",
+  "Rahim", "Karim", "Fatema", "Ayesha", "Tanvir", "Sadia", "Nusrat", "Arif", "Sabbir", "Mim",
+  "Rakib", "Sumaiya", "Imran", "Farhana", "Shakib", "Tasnim", "Mahmud", "Rubel", "Jannatul", "Nafis",
+  "Anika", "Rifat", "Sharmin", "Zahid", "Priyanka", "Sohel", "Lamia", "Naeem", "Tahmina", "Asif",
+  "Mehedi", "Sanjida", "Tousif", "Ishrat", "Rezaul", "Nabila", "Shanto", "Marufa", "Adnan", "Raisa",
 ];
 
 const LAST = [
-  "Whitfield", "Okonkwo", "Marchetti", "Novak", "Sharma", "Lindqvist", "Duarte", "Fischer",
-  "Tanaka", "Alvarez", "Boateng", "Kowalski", "Rossi", "Nguyen", "Haddad", "O'Sullivan",
-  "Bergström", "Mensah", "Petrov", "Kaur", "Robert", "Delacroix", "Van Dijk", "Silva",
-  "Yilmaz", "Castellano", "Moreau", "Andersen", "Bianchi", "Reyes",
+  "Rahman", "Hossain", "Islam", "Ahmed", "Chowdhury", "Khan", "Akter", "Begum", "Uddin", "Sarkar",
+  "Mia", "Ali", "Haque", "Karim", "Siddique", "Bhuiyan", "Talukder", "Mollah", "Sheikh", "Das",
+  "Roy", "Barua", "Majumder", "Kabir", "Alam", "Nahar", "Parvez", "Rashid", "Anam", "Jahan",
 ];
 
+/** The eleven branches. Dhaka-heavy, because the market is. */
 export const PICKUP_POINTS = [
-  "London Heathrow",
-  "London Kings Cross",
-  "London Mayfair",
-  "London Canary Wharf",
-  "Manchester City",
-  "Birmingham Central",
-  "Edinburgh Airport",
-  "Leeds City",
-  "Bristol Temple",
-  "Brighton Seafront",
-  "Glasgow Central",
+  "Dhaka Gulshan",
+  "Dhaka Banani",
+  "Dhaka Uttara",
+  "Dhaka Dhanmondi",
+  "Dhaka Motijheel",
+  "Hazrat Shahjalal Airport",
+  "Chattogram Agrabad",
+  "Sylhet City",
+  "Khulna City",
+  "Rajshahi City",
+  "Cox's Bazar",
 ] as const;
 
-const PAYMENTS = ["Stripe", "Paypal", "Apple Pay", "PayU", "Paytm", "Bank transfer"] as const;
+/** Payment rails people in Bangladesh actually use. */
+const PAYMENTS = ["bKash", "Nagad", "Rocket", "SSLCOMMERZ", "Visa", "Bank transfer", "Cash on pickup"] as const;
+
 const EXTRAS = [
   "Additional driver",
   "Child seat",
   "Full insurance",
   "Unlimited mileage",
-  "Airport delivery",
+  "Airport pickup",
   "Wi-Fi hotspot",
 ] as const;
 
 /**
- * Month-of-year demand multiplier. Shaped to mirror the seasonality in the
- * Figma sales-analytics curve: a February spike, a March trough, a June peak,
- * then a gentle autumn decline.
+ * Month-of-year demand multiplier for Bangladesh: the November-to-February
+ * wedding and tourist season is the peak, and the June-to-September monsoon is
+ * the trough. Two months either side of Eid lift as well, but Eid moves against
+ * the Gregorian calendar so it is left out rather than faked.
  */
-const SEASONALITY = [0.82, 1.0, 0.58, 0.7, 0.68, 1.0, 0.66, 0.62, 0.57, 0.72, 0.79, 0.95];
+const SEASONALITY = [1.15, 1.1, 0.85, 0.95, 0.8, 0.62, 0.58, 0.6, 0.7, 0.85, 1.0, 1.2];
 
 export type SeedBundle = ReturnType<typeof buildSeed>;
 
@@ -133,7 +148,7 @@ export function buildSeed(now = new Date()) {
       id: `cus_${String(i + 1).padStart(3, "0")}`,
       name: `${first} ${last}`,
       email: `${first.toLowerCase()}.${last.toLowerCase().replace(/[^a-z]/g, "")}${i}@example.com`,
-      phone: `+44 7${between(rng, 100, 999)} ${between(rng, 100000, 999999)}`,
+      phone: `+880 1${between(rng, 3, 9)}${between(rng, 10, 99)}-${between(rng, 100000, 999999)}`,
       city: pick(rng, market.cities),
       country: market.country,
       countryCode: market.code,
@@ -169,11 +184,9 @@ export function buildSeed(now = new Date()) {
   }[] = [];
 
   let seq = 0;
-  // 12 months back to today.
   for (let monthsAgo = 11; monthsAgo >= 0; monthsAgo--) {
     const anchor = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
     const season = SEASONALITY[anchor.getMonth()];
-    // Gentle year-over-year growth on top of the seasonal shape.
     const growth = 1 + (11 - monthsAgo) * 0.022;
     const count = Math.round(52 * season * growth);
     const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
@@ -200,16 +213,15 @@ export function buildSeed(now = new Date()) {
       const chosenExtras = Array.from(
         new Set(Array.from({ length: between(rng, 0, 2) }, () => pick(rng, EXTRAS))),
       );
-      const extrasTotal = chosenExtras.length * between(rng, 9, 24);
+      const extrasTotal = chosenExtras.length * between(rng, 400, 1500);
 
-      // ~78% success / 13% pending / 9% cancelled, matching the Figma pill mix.
       const roll = rng();
       const status = roll < 0.78 ? "success" : roll < 0.91 ? "pending" : "cancelled";
 
       seq += 1;
       bookings.push({
         id: `bkg_${String(seq).padStart(4, "0")}`,
-        reference: `#${between(rng, 100000000, 999999999)}${between(rng, 100, 999)}`,
+        reference: `BA-${between(rng, 100000, 999999)}${between(rng, 10, 99)}`,
         vehicleId,
         customerId: customer.id,
         pickupLocation: pick(rng, PICKUP_POINTS),
@@ -235,22 +247,22 @@ export function buildSeed(now = new Date()) {
   const LEAD_MESSAGES = [
     {
       message:
-        "Need a 7-seater for a family trip to Cornwall next weekend, 5 days. Two children so we'll need car seats. Budget is around £120 a day.",
+        "Need a microbus for a family trip to Cox's Bazar next weekend, 4 days, 10 of us. Budget around 8000 taka a day with driver.",
       intent: "book",
-      budgetPerDay: 120,
+      budgetPerDay: 8000,
       timeframe: "this_week",
-      partySize: 7,
+      partySize: 10,
     },
     {
       message:
-        "We're a production company shooting in Manchester in March. Likely 3 vehicles for 3 weeks. Can you invoice a company account?",
+        "We are an NGO running field visits in Sylhet from next month. Likely 3 vehicles for 3 weeks. Can you invoice against a project code?",
       intent: "corporate",
-      budgetPerDay: 400,
+      budgetPerDay: 12000,
       timeframe: "this_quarter",
       partySize: 6,
     },
     {
-      message: "Just browsing, what do you have in the way of sports cars?",
+      message: "Just browsing, what cars do you have available?",
       intent: "browse",
       budgetPerDay: null,
       timeframe: "unknown",
@@ -258,24 +270,24 @@ export function buildSeed(now = new Date()) {
     },
     {
       message:
-        "Wedding on the 14th — need the Bugatti or the LaFerrari with a chauffeur for four hours. Money is not the issue, availability is.",
+        "Wedding on the 14th at a Gulshan community centre. Need the E-Class with decoration and a chauffeur for the full day. Budget is not the issue, availability is.",
       intent: "book",
-      budgetPerDay: 2500,
+      budgetPerDay: 25000,
       timeframe: "this_month",
       partySize: 2,
     },
     {
-      message: "Do you deliver to Edinburgh airport? Might need something for a day.",
+      message: "Do you do airport pickup from Shahjalal? Might need a car for one day only.",
       intent: "enquiry",
-      budgetPerDay: 60,
+      budgetPerDay: 5000,
       timeframe: "next_month",
       partySize: 2,
     },
     {
       message:
-        "Our sales team needs 8 cars on a rolling monthly contract starting Q2. Please send commercial terms.",
+        "Our Dhaka office needs 8 cars on a monthly contract for the sales team starting from the new quarter. Please send corporate rates.",
       intent: "corporate",
-      budgetPerDay: 90,
+      budgetPerDay: 4500,
       timeframe: "this_quarter",
       partySize: 8,
     },
@@ -288,23 +300,21 @@ export function buildSeed(now = new Date()) {
     },
     {
       message:
-        "Curious what your rates look like. No rush, might need something later in the year for a road trip.",
+        "Curious what your rates look like. No rush, might need something later in the year for a trip to Bandarban.",
       intent: "browse",
       budgetPerDay: null,
       timeframe: "unknown",
-      partySize: 2,
+      partySize: 4,
     },
     {
-      message:
-        "Is there a student discount? Looking for the cheapest possible option, any car will do really.",
+      message: "Is there a student discount? Looking for the cheapest possible option, any car will do really.",
       intent: "browse",
-      budgetPerDay: 30,
+      budgetPerDay: 2000,
       timeframe: "unknown",
       partySize: 1,
     },
     {
-      message:
-        "Considering hiring something for a few days at some point. What's included in the price?",
+      message: "Considering hiring something for a few days at some point. Is the driver included in the price?",
       intent: "enquiry",
       budgetPerDay: null,
       timeframe: "unknown",
@@ -319,11 +329,19 @@ export function buildSeed(now = new Date()) {
     },
     {
       message:
-        "Looking at options for a trip next month, probably an SUV. Haven't fixed the dates but budget is around 90 a day.",
+        "Looking at options for a trip next month, probably an SUV for the family going to Sreemangal. Haven't fixed the dates but budget is around 7000 a day.",
       intent: "enquiry",
-      budgetPerDay: 90,
+      budgetPerDay: 7000,
       timeframe: "next_month",
       partySize: 5,
+    },
+    {
+      message:
+        "Flying in from Dubai on the 20th, need a Prado with driver for a week of meetings in Dhaka and one day to Chattogram.",
+      intent: "book",
+      budgetPerDay: 20000,
+      timeframe: "this_month",
+      partySize: 3,
     },
   ];
 

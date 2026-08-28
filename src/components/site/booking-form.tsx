@@ -6,15 +6,15 @@ import { useMemo, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 
 const EXTRAS = [
-  { name: "Full insurance", perDay: 19, note: "Takes the excess to zero" },
-  { name: "Additional driver", perDay: 11, note: "Per extra driver" },
-  { name: "Child seat", perDay: 8, note: "ISOFIX where supported" },
-  { name: "Unlimited mileage", perDay: 12, note: "Removes the 250 mile/day cap" },
-  { name: "Wi-Fi hotspot", perDay: 6, note: "4G, unlimited data" },
-  { name: "Airport delivery", perDay: 45, note: "Charged once, not per day" },
+  { name: "Full insurance", perDay: 1200, note: "Takes your liability to zero" },
+  { name: "Additional driver", perDay: 800, note: "Per extra named driver" },
+  { name: "Child seat", perDay: 500, note: "Fitted and checked before handover" },
+  { name: "Unlimited mileage", perDay: 900, note: "Removes the 120km/day cap in Dhaka" },
+  { name: "Wi-Fi hotspot", perDay: 400, note: "4G, unlimited data" },
+  { name: "Airport pickup", perDay: 1500, note: "Name board, one hour waiting. Charged once" },
 ];
 
-const ONE_OFF = new Set(["Airport delivery"]);
+const ONE_OFF = new Set(["Airport pickup"]);
 
 function discountRate(days: number) {
   if (days >= 28) return 0.25;
@@ -113,7 +113,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-display text-3xl font-bold text-ink-900">
           {formatCurrency(pricePerDay)}
-          <span className="text-sm font-medium text-ink-400"> / day</span>
+          <span className="text-sm font-medium text-ink-400"> / day with driver</span>
         </p>
         {totals.rate > 0 && (
           <span className="rounded-md bg-success-soft px-2 py-1 text-[12px] font-bold text-success">
@@ -167,7 +167,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
                   <span className="block truncate text-[11px] text-ink-400">{extra.note}</span>
                 </span>
                 <span className="shrink-0 text-[13px] font-semibold text-ink-600">
-                  £{extra.perDay}
+                  {formatCurrency(extra.perDay, { decimals: false })}
                   <span className="text-ink-300">{ONE_OFF.has(extra.name) ? "" : "/day"}</span>
                 </span>
               </label>
@@ -183,7 +183,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
             value={customer.name}
             onChange={(e) => setCustomer((c) => ({ ...c, name: e.target.value }))}
             className={field}
-            placeholder="Amelia Whitfield"
+            placeholder="Tanvir Hossain"
             required
             minLength={2}
           />
@@ -208,7 +208,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
             value={customer.phone}
             onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))}
             className={field}
-            placeholder="+44 7700 900123"
+            placeholder="+880 1712-345678"
           />
         </label>
       </div>
@@ -259,7 +259,7 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
         )}
       </button>
       <p className="mt-3 text-center text-[12px] text-ink-400">
-        Free cancellation up to 48 hours before pick-up. No card needed to reserve.
+        Driver included. Fuel billed at cost. Free cancellation up to 24 hours before pick-up.
       </p>
     </form>
   );

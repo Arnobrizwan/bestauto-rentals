@@ -149,7 +149,7 @@ export default async function VehiclePage({ params }: { params: Params }) {
             <section className="mt-10">
               <h2 className="font-display text-xl font-semibold text-ink-900">What&apos;s included</h2>
               <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                {[...vehicle.features, "250 miles per day", "Breakdown cover", "VAT included"].map((feature) => (
+                {[...vehicle.features, "120km per day in Dhaka", "24/7 roadside support", "VAT challan included"].map((feature) => (
                   <li key={feature} className="flex items-center gap-2.5 text-[15px] text-ink-500">
                     <span className="grid size-5 shrink-0 place-items-center rounded-full bg-success-soft text-success">
                       <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3">
@@ -168,20 +168,20 @@ export default async function VehiclePage({ params }: { params: Params }) {
                 <div className="flex flex-wrap gap-x-2">
                   <dt className="font-semibold text-ink-700">Deposit</dt>
                   <dd className="text-ink-400">
-                    {vehicle.segment === "exclusive" ? "£5,000" : vehicle.segment === "large" ? "£500" : "£250"}{" "}
-                    refundable pre-authorisation, released within 5 working days.
+                    {vehicle.segment === "exclusive" ? "৳1,00,000" : vehicle.segment === "large" ? "৳25,000" : "৳10,000"}{" "}
+                    refundable, returned within 3 working days by bKash, Nagad or bank transfer.
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2">
-                  <dt className="font-semibold text-ink-700">Minimum age</dt>
+                  <dt className="font-semibold text-ink-700">Documents</dt>
                   <dd className="text-ink-400">
-                    {vehicle.segment === "exclusive" ? "30" : vehicle.segment === "large" ? "25" : "21"}, with a full
-                    licence held at least 12 months.
+                    Chauffeur-driven needs only an NID or passport. Self-drive requires 23+ and a BRTA licence held two
+                    years.
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2">
                   <dt className="font-semibold text-ink-700">Fuel policy</dt>
-                  <dd className="text-ink-400">Supplied full, returned full.</dd>
+                  <dd className="text-ink-400">Billed at actual cost with pump receipts, on top of the daily rate.</dd>
                 </div>
               </dl>
             </section>

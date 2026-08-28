@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export type Facets = {
   brands: string[];
@@ -181,13 +181,16 @@ export function FleetFilters({ facets, resultCount }: { facets: Facets; resultCo
 
         <div className={GROUP_CLASS}>
           <p className={LEGEND_CLASS}>
-            Max price <span className="font-normal text-ink-400 normal-case">£{priceMax} / day</span>
+            Max price{" "}
+            <span className="font-normal text-ink-400 normal-case">
+              {formatCurrency(priceMax, { decimals: false })} / day
+            </span>
           </p>
           <input
             type="range"
             min={facets.priceMin}
             max={facets.priceMax}
-            step={10}
+            step={500}
             value={priceMax}
             aria-label="Maximum price per day"
             onChange={(e) => setDraggedPriceMax(Number(e.target.value))}
@@ -196,8 +199,8 @@ export function FleetFilters({ facets, resultCount }: { facets: Facets; resultCo
             className="w-full accent-brand-400"
           />
           <div className="mt-1 flex justify-between text-[11px] text-ink-400">
-            <span>£{facets.priceMin}</span>
-            <span>£{facets.priceMax}</span>
+            <span>{formatCurrency(facets.priceMin, { decimals: false })}</span>
+            <span>{formatCurrency(facets.priceMax, { decimals: false })}</span>
           </div>
         </div>
 

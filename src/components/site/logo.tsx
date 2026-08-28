@@ -24,7 +24,7 @@ export function Logo({ className, tone = "dark" }: { className?: string; tone?: 
           Best<span className="text-brand-400">Auto</span>
         </span>
         <span className={cn("text-[10px] tracking-[0.18em] uppercase", tone === "light" ? "text-white/60" : "text-ink-400")}>
-          Car rental UK
+          Car rental BD
         </span>
       </span>
     </Link>

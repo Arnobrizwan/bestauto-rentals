@@ -8,7 +8,7 @@ import { SalesAreaChart, type SalesPoint } from "@/components/charts/sales-area"
 import { SourceBars, StatusDonut, UtilisationBars } from "@/components/charts/mini";
 import { WorldSalesMap, type CountrySales } from "@/components/charts/world-map";
 import { Badge, Card, CardHeader, Delta, EmptyState, Skeleton, type BadgeTone } from "@/components/ui";
-import { cn, formatCompact, formatCurrency, formatNumber, timeAgo } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyCompact, formatNumber, timeAgo } from "@/lib/utils";
 
 import { RangeFilter, type RangeState } from "./range-filter";
 
@@ -85,12 +85,21 @@ export function Dashboard({
   // fetch and no loading flash - only a range change triggers a refetch.
   const [insights, setInsights] = useState<Insights>(initialInsights);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [grain, setGrain] = useState<string>(initial.range.grain);
+  const [mapPreset, setMapPreset] = useState("30d");
+  const [countries, setCountries] = useState(initial.countries);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(true);
 
-  const load = useCallback(async (next: RangeState) => {
+  const load = useCallback(async (next: RangeState, nextGrain?: string) => {
     try {
-      const res = await fetch(`/api/analytics?${rangeQuery(next)}`, { cache: "no-store" });
+      const params = rangeQuery(next) + (nextGrain ? `&grain=${nextGrain}` : "");
+      const res = await fetch(`/api/analytics?${params}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Could not refresh the dashboard.");
-      setData((await res.json()) as Analytics);
+      const payload = (await res.json()) as Analytics;
+      setData(payload);
+      setGrain(payload.range.grain);
+      setCountries(payload.countries);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -121,7 +130,27 @@ export function Dashboard({
   function refresh() {
     setLoading(true);
     setError(null);
-    void load(range);
+    void load(range, grain);
+  }
+
+  function changeGrain(next: string) {
+    setGrain(next);
+    setLoading(true);
+    void load(range, next);
+  }
+
+  /** The map has its own period, independent of the dashboard range. */
+  async function changeMapPreset(next: string) {
+    setMapPreset(next);
+    setMapLoading(true);
+    try {
+      const res = await fetch(`/api/analytics?preset=${next}`, { cache: "no-store" });
+      if (res.ok) setCountries(((await res.json()) as Analytics).countries);
+    } catch {
+      /* the map keeps the previous period rather than emptying */
+    } finally {
+      setMapLoading(false);
+    }
   }
 
   const { kpis } = data;
@@ -136,7 +165,26 @@ export function Dashboard({
             <span className="font-normal text-ink-400">here&apos;s what&apos;s happening with your store today.</span>
           </p>
         </div>
-        <RangeFilter value={range} onChange={changeRange} onRefresh={refresh} refreshing={loading} />
+        <div className="flex items-center gap-2">
+          <RangeFilter value={range} onChange={changeRange} onRefresh={refresh} refreshing={loading} />
+          <button
+            type="button"
+            onClick={() => setStatsOpen((v) => !v)}
+            aria-expanded={statsOpen}
+            aria-label={statsOpen ? "Collapse the headline stats" : "Expand the headline stats"}
+            className="grid size-10 place-items-center rounded-lg border border-line bg-white text-ink-500 transition-colors hover:border-ink-300 hover:text-ink-900"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              className={cn("size-4 transition-transform", !statsOpen && "rotate-180")}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="m5 12.5 5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </Card>
 
       {error && (
@@ -149,7 +197,10 @@ export function Dashboard({
       )}
 
       {/* --------------------------------------------------- Stat cards */}
-      <div className={cn("grid gap-5 lg:grid-cols-[1.35fr_1fr_1fr]", loading && "opacity-60 transition-opacity")}>
+      <div
+        hidden={!statsOpen}
+        className={cn("grid gap-5 lg:grid-cols-[1.35fr_1fr_1fr]", loading && "opacity-60 transition-opacity")}
+      >
         <Card className="flex items-center justify-between gap-4 px-6 py-6">
           <div>
             <p className="font-admin text-[15px] font-bold text-brand-400">Revenue</p>
@@ -180,6 +231,16 @@ export function Dashboard({
         </Card>
 
         <Card className="relative overflow-hidden border-0 bg-brand-400 px-6 py-6 text-white">
+          <button
+            type="button"
+            onClick={refresh}
+            aria-label="Refresh bookings"
+            className="absolute top-4 right-4 grid size-7 place-items-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          >
+            <svg viewBox="0 0 24 24" className={cn("size-4", loading && "animate-spin")} fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 13.7 4.7L20 15.5M20 20v-4.5h-4.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <svg viewBox="0 0 24 24" aria-hidden className="size-9 opacity-90" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M3 20h18M6 20V9M11 20V4M16 20v-7M21 20v-11" strokeLinecap="round" />
           </svg>
@@ -195,6 +256,16 @@ export function Dashboard({
         </Card>
 
         <Card className="relative overflow-hidden border-0 bg-ink-900 px-6 py-6 text-white">
+          <button
+            type="button"
+            onClick={refresh}
+            aria-label="Refresh rental days"
+            className="absolute top-4 right-4 grid size-7 place-items-center rounded-md text-white/60 transition-colors hover:bg-white/15 hover:text-white"
+          >
+            <svg viewBox="0 0 24 24" className={cn("size-4", loading && "animate-spin")} fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 13.7 4.7L20 15.5M20 20v-4.5h-4.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <svg viewBox="0 0 24 24" aria-hidden className="size-9 text-brand-400" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
             <path d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15" strokeLinecap="round" />
@@ -365,9 +436,19 @@ export function Dashboard({
           <CardHeader
             title="Sales Analytics"
             action={
-              <span className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-500">
-                {formatCompact(data.kpis.revenue.value)} · by {data.range.grain}
-              </span>
+              <label className="flex items-center gap-2 text-[12px] text-ink-400">
+                <span className="hidden sm:inline">{formatCurrencyCompact(data.kpis.revenue.value)}</span>
+                <select
+                  value={grain}
+                  onChange={(e) => changeGrain(e.target.value)}
+                  aria-label="Chart grouping"
+                  className="h-8 rounded-lg border border-line bg-white px-2 font-admin text-[12px] font-semibold text-ink-900 outline-none focus:border-brand-300"
+                >
+                  <option value="day">By day</option>
+                  <option value="week">By week</option>
+                  <option value="month">By month</option>
+                </select>
+              </label>
             }
           />
           <div className="p-4">
@@ -378,10 +459,23 @@ export function Dashboard({
         <Card>
           <CardHeader
             title="Sales by Countries"
-            action={<span className="text-[12px] text-ink-400">{data.countries.length} markets</span>}
+            action={
+              <select
+                value={mapPreset}
+                onChange={(e) => void changeMapPreset(e.target.value)}
+                aria-label="Map period"
+                className="h-8 rounded-lg border border-line bg-white px-2 font-admin text-[12px] font-semibold text-ink-900 outline-none focus:border-brand-300"
+              >
+                <option value="7d">This Week</option>
+                <option value="30d">This Month</option>
+                <option value="90d">This Quarter</option>
+                <option value="365d">This Year</option>
+              </select>
+            }
           />
-          <div className="p-4">
-            <WorldSalesMap data={data.countries} />
+          <div className={cn("p-4 transition-opacity", mapLoading && "opacity-60")}>
+            <WorldSalesMap data={countries} />
+            <p className="mt-2 text-center text-[12px] text-ink-400">{countries.length} markets in this period</p>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-[13px]">
               <Delta value={data.kpis.revenue.delta} />
               <span className="text-ink-400">

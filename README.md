@@ -1,6 +1,6 @@
 # Best Auto — car rental platform
 
-A production-shaped car rental product built for the Digital Pylot technical assessment. It contains
+A production-shaped car rental product for the Bangladeshi market, built for the Digital Pylot technical assessment. It contains
 two halves of one system: a **customer-facing rental site** and a **functional admin dashboard**, both
 driven by the same Postgres database and the same HTTP API, with an **AI layer** and an **event-driven
 automation engine** wired through the middle.
@@ -10,6 +10,7 @@ automation engine** wired through the middle.
 | **Live site** | **https://bestauto-rentals.vercel.app** |
 | **Admin dashboard** | **https://bestauto-rentals.vercel.app/admin** |
 | **Admin sign-in** | `ops@bestauto.co.uk` / `Pylot-Review-2026` |
+| **Market** | Bangladesh — BDT (৳) with lakh/crore grouping, 11 branches, chauffeur-included pricing |
 | **API reference** | https://bestauto-rentals.vercel.app/api/openapi |
 | **Health check** | https://bestauto-rentals.vercel.app/api/health |
 | **Repository** | https://github.com/Arnobrizwan/bestauto-rentals |
@@ -61,7 +62,8 @@ echo 'DATABASE_URL="postgresql://..."' > .env.local
 npm run db:push     # create the schema
 
 # The seed will not invent an admin password for you.
-SEED_ADMIN_PASSWORD='choose-something' npm run db:seed
+SEED_ADMIN_PASSWORD='choose-something' npm run db:seed   # 12 vehicles, 140 customers,
+                                                        # ~600 bookings, 42 scored leads, 8 rules
 npm run dev         # sign in at /login with ops@bestauto.co.uk
 ```
 
@@ -310,6 +312,34 @@ the AI concierge, and get identical scoring and automation from both.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
   replacing the `localStorage`-in-`useEffect` pattern with `useSyncExternalStore`, hoisting a
   component out of a render body, and server-rendering the AI brief instead of fetching it on mount.
+
+---
+
+## Localisation
+
+The product is built for Bangladesh, not translated into it.
+
+- **Currency.** All money is BDT. Formatting is hand-rolled rather than delegated to `Intl`, for two
+  reasons: Node's `en-BD` does not apply South Asian digit grouping (it renders `12,500,000` where a
+  Bangladeshi reader expects `1,25,00,000`) and prints `BDT` rather than `৳`; and `Intl`'s compact
+  notation disagrees between Node's ICU build and the browser's, which had already caused a hydration
+  mismatch. Compact figures use the units people actually use — `৳4.5L`, `৳1.3Cr` — not `K`/`M`.
+- **Fleet.** Reconditioned Japanese imports, because that is the market: Corolla, Corolla Axio
+  Hybrid, Premio, Swift, Vezel, X-Trail, Hiace microbus, Pajero Sport, Prado, Land Cruiser V8 and two
+  Mercedes for weddings and executives. The **microbus is a first-class category**, not an
+  afterthought — which is why the seat filter accepts up to 15 rather than 9.
+- **Pricing model.** Rates are quoted **with a driver**, which is the norm here, and fuel is billed at
+  cost on top. Self-drive is offered only on the economy and standard fleet. The quote tool, the
+  booking form and the concierge all say so.
+- **Branches.** Eleven, weighted to Dhaka (Gulshan, Banani, Uttara, Dhanmondi, Motijheel), plus
+  Shahjalal Airport, Chattogram, Sylhet, Khulna, Rajshahi and Cox's Bazar.
+- **Payments.** bKash, Nagad, Rocket, SSLCOMMERZ, cards, bank transfer and cash at handover.
+- **Policy knowledge.** BRTA licences, NID verification, taka deposits, monsoon and waterlogging,
+  wedding decoration, and fixed intercity round trips to Cox's Bazar, Sylhet and Bandarban.
+- **Demand curve.** The seed models the real season: the November-to-February wedding and tourist
+  peak, and the June-to-September monsoon trough.
+- **Markets.** Domestic demand dominates the world map, with a real slice booked from the diaspora
+  and Gulf business travel — which is what the *Sales by Countries* panel actually shows.
 
 ---
 

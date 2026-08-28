@@ -34,7 +34,7 @@ export const DEFAULT_RULES: RuleDefinition[] = [
           to: "{{lead.email}}",
           subject: "Your Best Auto enquiry — we're on it",
           template:
-            "Hi {{lead.name}},\n\nThanks for getting in touch. One of our team is looking at your requirements now and will call you shortly.\n\n{{lead.summary}}\n\n— Best Auto",
+            "Assalamu alaikum {{lead.name}},\n\nThank you for getting in touch. One of our team is looking at your requirements now and will call you shortly.\n\n{{lead.summary}}\n\n— Best Auto",
         },
       },
     ],
@@ -56,7 +56,7 @@ export const DEFAULT_RULES: RuleDefinition[] = [
           to: "{{lead.email}}",
           subject: "Three cars picked for you",
           template:
-            "Hi {{lead.name}},\n\nBased on what you told us, here are the closest matches on our fleet. Reply with dates and we'll hold one for you.\n\n{{lead.summary}}\n\n— Best Auto",
+            "Assalamu alaikum {{lead.name}},\n\nBased on what you told us, here are the closest matches on our fleet. Reply with your dates and we will hold one for you.\n\n{{lead.summary}}\n\n— Best Auto",
         },
       },
       { type: "tag_record", config: { entity: "lead", tag: "nurture-sequence" } },
@@ -86,7 +86,7 @@ export const DEFAULT_RULES: RuleDefinition[] = [
           to: "{{booking.customerEmail}}",
           subject: "Booking {{booking.reference}} confirmed",
           template:
-            "Hi {{booking.customerName}},\n\nYour {{booking.vehicleName}} is confirmed for {{booking.days}} days from {{booking.pickupDate}}, collecting at {{booking.pickupLocation}}.\n\nTotal: {{booking.total}}\nReference: {{booking.reference}}\n\n— Best Auto",
+            "Assalamu alaikum {{booking.customerName}},\n\nYour {{booking.vehicleName}} is confirmed for {{booking.days}} days from {{booking.pickupDate}}, collecting from {{booking.pickupLocation}}. A driver is included; fuel is billed at cost.\n\nTotal: {{booking.total}}\nReference: {{booking.reference}}\n\n— Best Auto",
         },
       },
       { type: "adjust_inventory", config: { delta: -1 } },
@@ -100,17 +100,18 @@ export const DEFAULT_RULES: RuleDefinition[] = [
   {
     id: "rule_high_value_booking",
     name: "High-value booking review",
-    description: "Bookings over £1,000 get a manual verification task before the keys are released.",
+    description:
+      "Bookings over ৳50,000 get a manual NID verification task before the vehicle is released.",
     trigger: "booking.created",
-    conditions: [{ field: "booking.totalValue", op: "gte", value: 1000 }],
+    conditions: [{ field: "booking.totalValue", op: "gte", value: 50000 }],
     actions: [
       {
         type: "create_task",
-        config: { queue: "risk", title: "Verify ID for {{booking.reference}} ({{booking.total}})", dueInMinutes: 240 },
+        config: { queue: "risk", title: "Verify NID for {{booking.reference}} ({{booking.total}})", dueInMinutes: 240 },
       },
       {
         type: "notify_slack",
-        config: { channel: "#risk", template: "High-value booking {{booking.reference}} at {{booking.total}} needs ID verification" },
+        config: { channel: "#risk", template: "High-value booking {{booking.reference}} at {{booking.total}} needs NID verification" },
       },
     ],
     enabled: true,
@@ -129,7 +130,7 @@ export const DEFAULT_RULES: RuleDefinition[] = [
           to: "{{booking.customerEmail}}",
           subject: "Sorry to see you go — a couple of alternatives",
           template:
-            "Hi {{booking.customerName}},\n\nWe've cancelled {{booking.reference}} and released the hold. If it was the price or the dates, we usually have flexibility on both — just reply and we'll take another look.\n\n— Best Auto",
+            "Assalamu alaikum {{booking.customerName}},\n\nWe have cancelled {{booking.reference}} and released the hold. If it was the price or the dates, we usually have flexibility on both — just reply and we will take another look.\n\n— Best Auto",
         },
       },
     ],

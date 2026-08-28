@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { SOURCE_LABELS } from "@/components/charts/mini";
 import { Badge, type BadgeTone } from "@/components/ui";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 export type LeadView = {
   id: string;
@@ -142,7 +142,9 @@ export function LeadRow({ lead }: { lead: LeadView }) {
                   {lead.budgetPerDay ? (
                     <div className="flex gap-1.5">
                       <dt>Budget</dt>
-                      <dd className="font-semibold text-ink-700">£{lead.budgetPerDay}/day</dd>
+                      <dd className="font-semibold text-ink-700">
+                        {formatCurrency(lead.budgetPerDay, { decimals: false })}/day
+                      </dd>
                     </div>
                   ) : null}
                   <div className="flex gap-1.5">

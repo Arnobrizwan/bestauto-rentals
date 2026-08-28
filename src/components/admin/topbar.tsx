@@ -30,7 +30,18 @@ export function AdminTopbar({
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+      setFullscreen(false);
+    } else {
+      void document.documentElement.requestFullscreen().catch(() => undefined);
+      setFullscreen(true);
+    }
+  }
 
   // Cmd/Ctrl-K focuses search, matching the shortcut hinted in the design.
   useEffect(() => {
@@ -90,6 +101,74 @@ export function AdminTopbar({
       </form>
 
       <div className="ml-auto flex items-center gap-2">
+        {/* Action cluster from the Figma header. */}
+        <Link
+          href="/admin/bookings"
+          className="hidden h-9 items-center gap-1.5 rounded-lg border border-line px-3 font-admin text-[13px] font-semibold text-ink-700 transition-colors hover:border-ink-300 xl:inline-flex"
+        >
+          <svg viewBox="0 0 24 24" className="size-4 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path d="M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+            <path d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15" strokeLinecap="round" />
+          </svg>
+          Fleet
+        </Link>
+
+        <Link
+          href="/cars"
+          className="hidden h-9 items-center gap-1.5 rounded-lg bg-brand-400 px-3 font-admin text-[13px] font-semibold text-white transition-colors hover:bg-brand-500 sm:inline-flex"
+        >
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8.5v7M8.5 12h7" strokeLinecap="round" />
+          </svg>
+          Add New
+        </Link>
+
+        <Link
+          href="/admin/automations"
+          className="hidden h-9 items-center gap-1.5 rounded-lg bg-ink-900 px-3 font-admin text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 sm:inline-flex"
+        >
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="3" y="5" width="18" height="12" rx="2" />
+            <path d="M8 21h8" strokeLinecap="round" />
+          </svg>
+          Runs
+        </Link>
+
+        <span
+          title="Bangladesh — all amounts in BDT"
+          aria-label="Locale: Bangladesh"
+          className="hidden size-9 place-items-center rounded-lg border border-line text-[15px] lg:grid"
+        >
+          🇧🇩
+        </span>
+
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}
+          className="hidden size-9 place-items-center rounded-lg border border-line text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 lg:grid"
+        >
+          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7">
+            {fullscreen ? (
+              <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" strokeLinecap="round" strokeLinejoin="round" />
+            ) : (
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+            )}
+          </svg>
+        </button>
+
+        <Link
+          href="/admin/automations"
+          aria-label="Outbox"
+          className="relative hidden size-9 place-items-center rounded-lg border border-line text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 md:grid"
+        >
+          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3.5 7 8.5 6 8.5-6" strokeLinecap="round" />
+          </svg>
+        </Link>
+
         <span
           className={cn(
             "hidden items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold md:inline-flex",
@@ -114,6 +193,17 @@ export function AdminTopbar({
               {notifications > 99 ? "99" : notifications}
             </span>
           )}
+        </Link>
+
+        <Link
+          href="/admin/ai"
+          aria-label="AI settings"
+          className="hidden size-9 place-items-center rounded-lg border border-line text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 md:grid"
+        >
+          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
 
         <span

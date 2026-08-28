@@ -28,34 +28,42 @@ export const CONCIERGE_CASES: ConciergeCase[] = [
     expect: { maxWords: 70, returnsVehicles: false },
   },
   {
-    id: "family-search",
-    description: "Family brief returns real vehicles with enough seats",
-    turns: [{ role: "user", content: "I need a car for 6 people for a family holiday, around £150 a day" }],
+    id: "family-microbus",
+    description: "A large family group is offered something that actually seats them",
+    turns: [
+      { role: "user", content: "I need a car for 10 people going to Cox's Bazar, around 8000 taka a day" },
+    ],
     expect: { usesTool: "search_vehicles", returnsVehicles: true },
   },
   {
     id: "budget-city",
-    description: "Cheap city brief surfaces the small segment",
-    turns: [{ role: "user", content: "Something cheap and small for driving around London, under £50 a day" }],
+    description: "Cheap Dhaka runaround surfaces the economy segment",
+    turns: [{ role: "user", content: "Something cheap and small for driving around Dhaka, under 4000 taka a day" }],
     expect: { usesTool: "search_vehicles", returnsVehicles: true },
   },
   {
-    id: "policy-excess",
-    description: "Insurance question is answered from the knowledge base, with the real figure",
-    turns: [{ role: "user", content: "What is the insurance excess?" }],
-    expect: { usesTool: "get_policy", mentionsAny: ["excess", "950"] },
+    id: "policy-driver",
+    description: "The driver question is answered from policy, since it is the first thing people ask here",
+    turns: [{ role: "user", content: "Is the driver included in the price or is it self drive?" }],
+    expect: { usesTool: "get_policy", mentionsAny: ["chauffeur", "driver", "self-drive"] },
   },
   {
-    id: "policy-age",
-    description: "Age question is answered from policy rather than guessed",
-    turns: [{ role: "user", content: "How old do I have to be to rent one of the supercars?" }],
-    expect: { mentionsAny: ["30", "age", "licence"] },
+    id: "policy-deposit",
+    description: "Deposit question returns the real taka figures",
+    turns: [{ role: "user", content: "How much deposit do you take?" }],
+    expect: { mentionsAny: ["10,000", "25,000", "deposit"] },
+  },
+  {
+    id: "policy-licence",
+    description: "Licence and paperwork questions come from policy, not guesswork",
+    turns: [{ role: "user", content: "What documents do I need, do you want my NID?" }],
+    expect: { mentionsAny: ["nid", "licence", "passport", "brta"] },
   },
   {
     id: "quote",
     description: "Pricing goes through the quote tool, never mental arithmetic",
-    turns: [{ role: "user", content: "How much is the Mustang for 7 days?" }],
-    expect: { usesTool: "quote_price", mentionsAny: ["£"] },
+    turns: [{ role: "user", content: "How much is the Premio for 7 days?" }],
+    expect: { usesTool: "quote_price", mentionsAny: ["৳"] },
   },
   {
     id: "handoff",
@@ -81,48 +89,54 @@ export type RecommenderCase = {
   id: string;
   description: string;
   brief: Record<string, unknown>;
-  expect: { minSeats?: number; maxPricePerDay?: number; segmentIn?: string[]; count?: number; transmission?: string };
+  expect: {
+    minSeats?: number;
+    maxPricePerDay?: number;
+    segmentIn?: string[];
+    count?: number;
+    transmission?: string;
+  };
 };
 
 export const RECOMMENDER_CASES: RecommenderCase[] = [
   {
-    id: "family-seven",
-    description: "Seven passengers must produce vehicles that actually seat them",
-    brief: { brief: "Family of 7 going to Cornwall for a week", passengers: 7 },
-    // No count assertion: only one vehicle in the fleet seats 7, and returning
-    // a 5-seater to pad the list would be the bug, not the fix.
-    expect: { minSeats: 7 },
+    id: "group-of-ten",
+    description: "Ten passengers must produce vehicles that actually seat them",
+    brief: { brief: "Ten of us going to Cox's Bazar for a week", passengers: 10 },
+    // Only the microbus seats ten; padding the list with a 7-seater would be
+    // the bug, not the fix.
+    expect: { minSeats: 10 },
   },
   {
-    id: "family-of-six-phrasing",
-    description: "\"Family of 6\" is parsed as a party size, not ignored",
-    brief: { brief: "Family of 6 driving to Cornwall for a week, budget around £150 a day" },
+    id: "family-of-six",
+    description: '"Family of 6" is parsed as a party size, not ignored',
+    brief: { brief: "Family of 6 driving to Sylhet for a week, budget around 9000 taka a day" },
     expect: { minSeats: 6 },
   },
   {
-    id: "tight-budget",
-    description: "A £50 budget must not lead with a hypercar",
-    brief: { brief: "Cheap runaround for the city", budgetPerDay: 50, occasion: "city" },
-    expect: { maxPricePerDay: 80, segmentIn: ["small", "large"] },
+    id: "automatic-from-free-text",
+    description: '"automatic" in the brief is treated as a real constraint',
+    brief: { brief: "Something cheap and automatic for office runs around Dhaka" },
+    // "cheap" has to bite even with no figure attached: the Land Cruiser is
+    // never the answer to this brief, whatever else matches.
+    expect: { transmission: "Automatic", maxPricePerDay: 8000 },
   },
   {
-    id: "automatic-from-free-text",
-    description: "\"automatic\" in the brief is treated as a real constraint",
-    brief: { brief: "Something cheap and automatic for city errands in London" },
-    // "cheap" has to bite even with no figure attached: a hypercar is never the
-    // answer to this brief, whatever else matches.
-    expect: { transmission: "Automatic", maxPricePerDay: 150 },
+    id: "tight-budget",
+    description: "A 3,500 taka budget must not lead with the exclusive fleet",
+    brief: { brief: "Cheap runaround for Dhaka traffic", budgetPerDay: 3500, occasion: "city" },
+    expect: { maxPricePerDay: 6000, segmentIn: ["small", "large"] },
   },
   {
     id: "wedding",
     description: "A wedding brief leads with the exclusive fleet",
-    brief: { brief: "Wedding car for the day, want something spectacular", occasion: "special", budgetPerDay: 3000 },
+    brief: { brief: "Wedding car for the day, want something that looks special", occasion: "special", budgetPerDay: 30000 },
     expect: { segmentIn: ["exclusive"] },
   },
   {
     id: "business",
     description: "Airport business travel prefers an automatic",
-    brief: { brief: "Business trip, client pickups from Heathrow", occasion: "business", transmission: "Automatic" },
+    brief: { brief: "Business trip, client pickups from Shahjalal airport", occasion: "business", transmission: "Automatic" },
     expect: { count: 3 },
   },
 ];
@@ -149,14 +163,15 @@ export const QUALIFIER_CASES: QualifierCase[] = [
     id: "hot-dated-booking",
     description: "Dates plus budget plus a named car is a hot lead",
     lead: {
-      name: "Priya Sharma",
-      email: "priya@example.com",
-      phone: "+44 7700 900123",
-      message: "I need the BMW M4 from 14th March for 5 days, budget is around £250 a day. Can you confirm today?",
+      name: "Tanvir Hossain",
+      email: "tanvir@example.com",
+      phone: "+880 1712-345678",
+      message:
+        "I need the Prado from 14th March for 5 days, budget is around 20000 taka a day. Can you confirm today?",
       intent: "book",
-      budgetPerDay: 250,
+      budgetPerDay: 20000,
       timeframe: "this_week",
-      partySize: 2,
+      partySize: 3,
     },
     expect: { tier: "hot" },
   },
@@ -164,13 +179,14 @@ export const QUALIFIER_CASES: QualifierCase[] = [
     id: "hot-corporate",
     description: "Multi-vehicle corporate demand is hot even without a date",
     lead: {
-      name: "Tomas Novak",
-      email: "tomas@acme.com",
-      phone: "+44 7700 900456",
+      name: "Sadia Rahman",
+      email: "sadia@acme.com.bd",
+      phone: "+880 1819-223344",
       company: "Acme Logistics",
-      message: "We need 6 vehicles on a rolling monthly contract for our field team. Please send commercial terms.",
+      message:
+        "We need 6 vehicles on a rolling monthly contract for our field team in Sylhet. Please send corporate rates.",
       intent: "corporate",
-      budgetPerDay: 90,
+      budgetPerDay: 9000,
       timeframe: "this_quarter",
       partySize: 6,
     },
@@ -180,8 +196,8 @@ export const QUALIFIER_CASES: QualifierCase[] = [
     id: "cold-browsing",
     description: "Vague browsing with no dates is cold",
     lead: {
-      name: "Sam Lee",
-      email: "sam@example.com",
+      name: "Rakib Islam",
+      email: "rakib@example.com",
       message: "Just looking, no rush. Might need something someday.",
       intent: "browse",
       timeframe: "unknown",
@@ -192,11 +208,11 @@ export const QUALIFIER_CASES: QualifierCase[] = [
     id: "cold-price-only",
     description: "Price-only motivation scores low",
     lead: {
-      name: "Alex Kim",
-      email: "alex@example.com",
+      name: "Nafis Ahmed",
+      email: "nafis@example.com",
       message: "Cheapest possible, any car will do.",
       intent: "browse",
-      budgetPerDay: 25,
+      budgetPerDay: 1500,
       timeframe: "unknown",
     },
     expect: { tier: "cold" },
@@ -205,12 +221,12 @@ export const QUALIFIER_CASES: QualifierCase[] = [
     id: "warm-soft-intent",
     description: "Real interest without firm dates lands in the middle",
     lead: {
-      name: "Nadia Haddad",
-      email: "nadia@example.com",
+      name: "Farhana Akter",
+      email: "farhana@example.com",
       message:
-        "Looking at options for a trip next month, probably an SUV for the family. Haven't fixed the dates but budget is around 90 a day.",
+        "Looking at options for a trip next month, probably an SUV for the family going to Sreemangal. Haven't fixed the dates but budget is around 7000 a day.",
       intent: "enquiry",
-      budgetPerDay: 90,
+      budgetPerDay: 7000,
       timeframe: "next_month",
       partySize: 5,
     },
