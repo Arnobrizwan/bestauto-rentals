@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth/server";
 import { log } from "@/lib/observability/logger";
 import { ok, requireCronAuth } from "@/lib/security/http";
 import { claimOutboxBatch, markOutboxDelivered, markOutboxFailed } from "@/server/repositories/automation";
@@ -52,6 +53,13 @@ async function deliver(message: { channel: string; recipient: string; subject: s
  * part that makes it true: due messages are attempted oldest-first, a failure
  * backs off exponentially, and a message that cannot be delivered after six
  * attempts is marked dead rather than retried forever.
+ *
+ * Scheduled daily rather than every half hour because Vercel's Hobby plan
+ * rejects a sub-daily cron expression outright — the deploy fails, it does not
+ * silently run less often. A backlog therefore waits up to a day for the
+ * schedule, so the Automations page can also drain on demand; on Pro this
+ * would be `*\/30 * * * *` and the button would be a convenience rather than a
+ * necessity.
  */
 async function run() {
   const batch = await claimOutboxBatch(25);
@@ -85,5 +93,12 @@ async function run() {
 export async function GET(req: Request) {
   const unauthorised = requireCronAuth(req);
   if (unauthorised) return unauthorised;
+  return run();
+}
+
+/** Manual drain from the Automations page. Admin role, like every mutation. */
+export async function POST() {
+  const forbidden = await requireAdmin({ role: "admin" });
+  if (forbidden) return forbidden;
   return run();
 }

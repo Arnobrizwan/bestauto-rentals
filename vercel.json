@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/drain-outbox",
-      "schedule": "*/30 * * * *"
+      "schedule": "15 7 * * *"
     }
   ]
 }

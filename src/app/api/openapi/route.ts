@@ -143,6 +143,11 @@ export async function GET(req: Request) {
             "Claims due messages oldest-first, marks delivered ones sent, backs off exponentially on failure and marks a message dead after six attempts. This is what makes the outbox a delivery guarantee rather than a list.",
           responses: { "200": { description: "Counts of claimed, delivered, failed and dead" }, "401": errorResponse, "503": errorResponse },
         },
+        post: {
+          summary: "Drain the outbox on demand from the dashboard",
+          description: "Admin role required. Exists because Vercel's Hobby plan allows only a daily cron, so a backlog would otherwise wait for the schedule.",
+          responses: { "200": { description: "Ran" }, "403": errorResponse },
+        },
       },
       "/api/cron/daily-digest": {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
