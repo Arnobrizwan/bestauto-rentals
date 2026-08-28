@@ -89,7 +89,6 @@ npm run dev         # sign in at /login with ops@bestauto.co.uk
 | `RESEND_API_KEY` | no | Marks queued email as sent |
 | `SESSION_SECRET` | **in production** | 32+ char secret signing admin session cookies. The app refuses to start a production session without it |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | seed only | The admin account `npm run db:seed` creates. `SEED_ADMIN_PASSWORD` has no default — the seed fails without it rather than creating a known password |
-| `SHOW_DEMO_CREDENTIALS` + `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` | no | Renders a click-to-fill credentials panel on the login page. **Off unless explicitly set to `true`** — it is on for this review deployment only |
 | `CRON_SECRET` | no | Required as `Bearer` on the scheduled endpoint when set |
 | `WEBHOOK_SECRET_<SOURCE>` | no | Enables HMAC-SHA256 verification for that webhook source |
 
@@ -182,9 +181,8 @@ account and a wrong password return the same message and run the same PBKDF2 wor
 be enumerated by response or by timing. The post-login redirect only accepts same-origin paths.
 Forged signatures, tampered payloads and expired cookies are all rejected — verified in testing.
 
-**For this review deployment** the login page shows a click-to-fill credentials panel. That is gated
-behind `SHOW_DEMO_CREDENTIALS=true` and is off by default, so a real deployment never advertises a
-way in. Unset it and the panel disappears with no other change.
+**The login page never displays credentials.** The reviewer account is documented in this README
+only; the sign-in screen is a plain form with no hints, so the deployed page gives nothing away.
 
 ---
 

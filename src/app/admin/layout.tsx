@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { describeEngine, resolveProvider } from "@/ai/provider";
 import { AdminShell } from "@/components/admin/shell";
 import { getCurrentAdmin } from "@/lib/auth/server";
 import { getLeadFunnel } from "@/server/repositories/leads";
@@ -23,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const hotLeads = funnel.find((f) => f.tier === "hot")?.n ?? 0;
 
   return (
-    <AdminShell engine={describeEngine(resolveProvider())} hotLeads={hotLeads} user={user}>
+    <AdminShell hotLeads={hotLeads} user={user}>
       {children}
     </AdminShell>
   );

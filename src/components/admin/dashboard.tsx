@@ -161,7 +161,7 @@ export function Dashboard({
       <Card className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-admin text-lg font-bold text-ink-900">
-            <span aria-hidden>👋</span> Hi {userName.split(" ")[0]},{" "}
+            <span aria-hidden>👋</span> Hi {userName},{" "}
             <span className="font-normal text-ink-400">here&apos;s what&apos;s happening with your store today.</span>
           </p>
         </div>
@@ -207,12 +207,12 @@ export function Dashboard({
             <p className="mt-2 font-admin text-[32px] leading-none font-bold text-ink-900">
               {formatCurrency(kpis.revenue.value)}
             </p>
-            <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[13px] text-ink-400">
+            <p
+              className="mt-3 flex flex-wrap items-center gap-1.5 text-[13px] text-ink-400"
+              title={`Gross margin ${formatCurrency(kpis.margin.value)} · average order ${formatCurrency(kpis.averageOrder.value)}`}
+            >
               <Delta value={kpis.revenue.delta} />
-              compared to previous {data.range.days} days
-            </p>
-            <p className="mt-1 text-[12px] text-ink-400">
-              Gross margin {formatCurrency(kpis.margin.value)} · avg order {formatCurrency(kpis.averageOrder.value)}
+              {kpis.revenue.delta >= 0 ? "increase" : "decrease"} compared to last period
             </p>
           </div>
           <svg viewBox="0 0 120 100" aria-hidden className="hidden h-24 w-28 shrink-0 sm:block">
@@ -245,13 +245,11 @@ export function Dashboard({
             <path d="M3 20h18M6 20V9M11 20V4M16 20v-7M21 20v-11" strokeLinecap="round" />
           </svg>
           <p className="mt-5 font-admin text-[30px] leading-none font-bold">{formatNumber(kpis.bookings.value)}</p>
-          <p className="mt-1.5 text-[14px] text-white/85">Bookings in period</p>
-          <p className="mt-3 flex items-center gap-1.5 text-[13px] text-white/85">
-            <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-1.5 py-0.5 font-bold">
-              {kpis.bookings.delta >= 0 ? "+" : ""}
-              {kpis.bookings.delta.toFixed(0)}%
-            </span>
-            vs previous period
+          <p
+            className="mt-1.5 text-[14px] text-white/85"
+            title={`${kpis.bookings.delta >= 0 ? "+" : ""}${kpis.bookings.delta.toFixed(0)}% vs the previous period`}
+          >
+            No of Total Bookings
           </p>
         </Card>
 
@@ -271,68 +269,17 @@ export function Dashboard({
             <path d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15" strokeLinecap="round" />
           </svg>
           <p className="mt-5 font-admin text-[30px] leading-none font-bold">{formatNumber(kpis.rentalDays.value)}</p>
-          <p className="mt-1.5 text-[14px] text-white/70">Rental days sold</p>
-          <p className="mt-3 flex items-center gap-1.5 text-[13px] text-white/70">
-            <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-1.5 py-0.5 font-bold">
-              {kpis.rentalDays.delta >= 0 ? "+" : ""}
-              {kpis.rentalDays.delta.toFixed(0)}%
-            </span>
-            {formatNumber(kpis.customers.value)} new customers
+          <p
+            className="mt-1.5 text-[14px] text-white/70"
+            title={`${kpis.rentalDays.delta >= 0 ? "+" : ""}${kpis.rentalDays.delta.toFixed(0)}% vs the previous period · ${formatNumber(kpis.customers.value)} new customers`}
+          >
+            No of Rental Days Sold
           </p>
         </Card>
       </div>
 
-      {/* ------------------------------------------------- AI insights */}
-      <Card>
-        <CardHeader
-          title={
-            <span className="flex items-center gap-2">
-              AI operations brief
-              <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
-                {insights.engine.hosted ? insights.engine.model : "rules"}
-              </span>
-            </span>
-          }
-          action={
-            <span className="text-[12px] text-ink-400">
-              {insightsLoading ? "Analysing…" : `${insights.latencyMs}ms`}
-            </span>
-          }
-        />
-        <div className="grid gap-3 p-5 sm:grid-cols-2">
-          {insightsLoading
-            ? Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24" />)
-            : insights.insights.map((insight) => (
-                <article
-                  key={insight.title}
-                  className={cn(
-                    "rounded-xl border-l-4 bg-canvas px-4 py-3.5",
-                    insight.severity === "warning"
-                      ? "border-l-danger"
-                      : insight.severity === "positive"
-                        ? "border-l-success"
-                        : "border-l-info",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h4 className="font-admin text-[14px] font-bold text-ink-900">{insight.title}</h4>
-                    <span className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[11px] font-bold text-ink-600">
-                      {insight.metric}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{insight.detail}</p>
-                </article>
-              ))}
-          {!insightsLoading && !insights.insights.length && (
-            <p className="col-span-full py-6 text-center text-sm text-ink-400">
-              Nothing notable in this window — the numbers are all within normal range.
-            </p>
-          )}
-        </div>
-      </Card>
-
       {/* ------------------------------ Best sellers + recent bookings */}
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
+      <div className="grid gap-5 min-[1150px]:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
         <Card>
           <CardHeader
             title="Best Seller"
@@ -431,7 +378,7 @@ export function Dashboard({
       </div>
 
       {/* ---------------------------------------- Sales chart + world map */}
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="grid gap-5 min-[1150px]:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader
             title="Sales Analytics"
@@ -485,6 +432,55 @@ export function Dashboard({
           </div>
         </Card>
       </div>
+
+      {/* ------------------------------------------------- AI insights */}
+      <Card>
+        <CardHeader
+          title={
+            <span className="flex items-center gap-2">
+              AI operations brief
+              <span className="rounded-md bg-ink-900 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
+                {insights.engine.hosted ? insights.engine.model : "rules"}
+              </span>
+            </span>
+          }
+          action={
+            <span className="text-[12px] text-ink-400">
+              {insightsLoading ? "Analysing…" : `${insights.latencyMs}ms`}
+            </span>
+          }
+        />
+        <div className="grid gap-3 p-5 sm:grid-cols-2">
+          {insightsLoading
+            ? Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24" />)
+            : insights.insights.map((insight) => (
+                <article
+                  key={insight.title}
+                  className={cn(
+                    "rounded-xl border-l-4 bg-canvas px-4 py-3.5",
+                    insight.severity === "warning"
+                      ? "border-l-danger"
+                      : insight.severity === "positive"
+                        ? "border-l-success"
+                        : "border-l-info",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-admin text-[14px] font-bold text-ink-900">{insight.title}</h4>
+                    <span className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[11px] font-bold text-ink-600">
+                      {insight.metric}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{insight.detail}</p>
+                </article>
+              ))}
+          {!insightsLoading && !insights.insights.length && (
+            <p className="col-span-full py-6 text-center text-sm text-ink-400">
+              Nothing notable in this window — the numbers are all within normal range.
+            </p>
+          )}
+        </div>
+      </Card>
 
       {/* ------------------------------------------------- Lower charts */}
       <div className="grid gap-5 lg:grid-cols-3">

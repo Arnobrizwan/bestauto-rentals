@@ -1,4 +1,11 @@
-export type NavItem = { href: string; label: string; icon: string; badge?: "leads" };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  badge?: "leads";
+  /** Renders the Figma's right-hand chevron on rows that lead somewhere deeper. */
+  expandable?: boolean;
+};
 
 export type NavGroup = { title: string; items: NavItem[] };
 
@@ -10,6 +17,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         href: "/admin",
         label: "Dashboard",
+        expandable: true,
         icon: "M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM14 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM14 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z",
       },
     ],
@@ -20,6 +28,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         href: "/admin/vehicles",
         label: "Vehicles",
+        expandable: true,
         icon: "M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15",
       },
     ],
@@ -30,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         href: "/admin/bookings",
         label: "Bookings",
+        expandable: true,
         icon: "M5 4h14a1 1 0 0 1 1 1v15l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1zM8.5 9h7M8.5 13h4",
       },
       {

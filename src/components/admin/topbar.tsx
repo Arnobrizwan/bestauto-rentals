@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { cn } from "@/lib/utils";
-
 const TITLES: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/vehicles": "Vehicles",
@@ -18,12 +16,10 @@ const TITLES: Record<string, string> = {
 
 export function AdminTopbar({
   onMenu,
-  engine,
   notifications,
   user,
 }: {
   onMenu: () => void;
-  engine: { engine: string; model: string; hosted: boolean };
   notifications: number;
   user: { name: string; email: string; role: string };
 }) {
@@ -169,16 +165,7 @@ export function AdminTopbar({
           </svg>
         </Link>
 
-        <span
-          className={cn(
-            "hidden items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold md:inline-flex",
-            engine.hosted ? "border-success/25 bg-success-soft text-success" : "border-line bg-canvas text-ink-500",
-          )}
-          title={engine.hosted ? `Hosted model: ${engine.model}` : "No model key configured — deterministic engine"}
-        >
-          <span className={cn("size-1.5 rounded-full", engine.hosted ? "bg-success" : "bg-ink-300")} />
-          AI: {engine.hosted ? engine.model : "rules engine"}
-        </span>
+
 
         <Link
           href="/admin/leads"

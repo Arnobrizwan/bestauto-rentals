@@ -10,12 +10,10 @@ import { AdminTopbar } from "./topbar";
 export type AdminUserView = { id: string; email: string; name: string; role: string };
 
 export function AdminShell({
-  engine,
   hotLeads,
   user,
   children,
 }: {
-  engine: { engine: string; model: string; hosted: boolean };
   hotLeads: number;
   user: AdminUserView;
   children: React.ReactNode;
@@ -34,7 +32,7 @@ export function AdminShell({
         onToggleCollapse={() => setCollapsed((v) => !v)}
       />
       <div className={cn("transition-[padding] duration-300", collapsed ? "lg:pl-[76px]" : "lg:pl-[248px]")}>
-        <AdminTopbar onMenu={() => setNavOpen(true)} engine={engine} notifications={hotLeads} user={user} />
+        <AdminTopbar onMenu={() => setNavOpen(true)} notifications={hotLeads} user={user} />
         <main className="px-4 py-5 lg:px-6 lg:py-6">{children}</main>
         <footer className="flex flex-col gap-1 border-t border-line px-4 py-4 text-[12px] text-ink-400 sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <p>2026 &copy; Best Auto. All rights reserved.</p>

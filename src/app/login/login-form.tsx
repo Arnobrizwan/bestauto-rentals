@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function LoginForm({ next, demo }: { next: string; demo: { email: string; password: string } | null }) {
+export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
-  const [email, setEmail] = useState(demo?.email ?? "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,23 +83,6 @@ export function LoginForm({ next, demo }: { next: string; demo: { email: string;
         )}
       </button>
 
-      {demo && (
-        <button
-          type="button"
-          onClick={() => {
-            setEmail(demo.email);
-            setPassword(demo.password);
-          }}
-          className="w-full rounded-xl border border-dashed border-ink-200 px-4 py-3 text-left transition-colors hover:border-brand-300 hover:bg-brand-50"
-        >
-          <span className="block text-[12px] font-semibold tracking-wide text-ink-400 uppercase">
-            Reviewer access
-          </span>
-          <span className="mt-1 block font-mono text-[13px] text-ink-700">{demo.email}</span>
-          <span className="block font-mono text-[13px] text-ink-700">{demo.password}</span>
-          <span className="mt-1.5 block text-[12px] text-ink-400">Click to fill, then sign in.</span>
-        </button>
-      )}
     </form>
   );
 }

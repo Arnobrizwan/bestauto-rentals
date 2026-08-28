@@ -46,7 +46,7 @@ export function AdminSidebar({
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className={cn("flex h-16 shrink-0 items-center border-b border-line", collapsed ? "lg:justify-center lg:px-0 px-5" : "px-5")}>
+        <div className={cn("relative flex h-16 shrink-0 items-center border-b border-line", collapsed ? "lg:justify-center lg:px-0 px-5" : "px-5")}>
           <span className={cn(collapsed && "lg:hidden")}>
             <Logo />
           </span>
@@ -55,14 +55,14 @@ export function AdminSidebar({
             onClick={onToggleCollapse}
             aria-label={collapsed ? "Expand the sidebar" : "Collapse the sidebar"}
             aria-expanded={!collapsed}
-            className="ml-auto hidden size-7 place-items-center rounded-full border border-line bg-brand-50 text-brand-500 transition-colors hover:bg-brand-100 lg:grid"
+            className="absolute top-1/2 -right-3.5 z-10 hidden size-7 -translate-y-1/2 place-items-center rounded-full bg-brand-400 text-white shadow-[0_2px_8px_-2px_rgba(9,44,76,0.35)] transition-colors hover:bg-brand-500 lg:grid"
           >
             <svg
               viewBox="0 0 20 20"
               className={cn("size-3.5 transition-transform", collapsed && "rotate-180")}
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.2"
+              strokeWidth="2.6"
             >
               <path d="m12 5-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -70,11 +70,18 @@ export function AdminSidebar({
         </div>
 
         <nav className="scroll-slim flex-1 overflow-y-auto px-3 py-5" aria-label="Admin">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.title} className="mb-5">
+          {NAV_GROUPS.map((group, index) => (
+            <div
+              key={group.title}
+              className={cn(
+                "pb-4",
+                // A hairline between groups, exactly as the design separates them.
+                index > 0 && "mt-1 border-t border-line pt-4",
+              )}
+            >
               <p
                 className={cn(
-                  "px-3 pb-2 font-admin text-[11px] font-bold tracking-[0.08em] text-ink-900 uppercase",
+                  "px-3 pb-1.5 font-admin text-[13px] font-bold text-ink-900",
                   collapsed && "lg:sr-only",
                 )}
               >
@@ -108,6 +115,22 @@ export function AdminSidebar({
                           <path d={item.icon} strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
+                        {item.expandable && (
+                          <svg
+                            viewBox="0 0 20 20"
+                            aria-hidden
+                            className={cn(
+                              "size-4 shrink-0 rounded-full bg-ink-50 p-0.5 text-ink-400",
+                              active && "bg-brand-100 text-brand-500",
+                              collapsed && "lg:hidden",
+                            )}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d={active ? "m6 8 4 4 4-4" : "m8 6 4 4-4 4"} strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
                         {item.badge === "leads" && hotLeads > 0 && (
                           <span className={cn(
                             "grid size-5 shrink-0 place-items-center rounded-full bg-danger text-[10px] font-bold text-white",
