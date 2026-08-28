@@ -51,8 +51,17 @@ jobs:
           node-version: 22
           cache: npm
 
+      # `npm ci` rather than `npm install` would be the stricter choice, and was
+      # the first attempt. It cannot work here: @unrs/resolver-binding-wasm32-wasi
+      # pulls @emnapi/core and @emnapi/runtime through a floating range, and a
+      # lockfile resolved on macOS pins 1.10.0 where Linux resolves 1.11.3, so
+      # `npm ci` refuses the tree on the runner. Pinning them through overrides
+      # drops them from the lockfile on macOS instead of reconciling the two.
+      # The honest fix is to regenerate the lockfile on Linux; until then this
+      # installs against the same lockfile without failing on that one
+      # platform-specific optional dependency.
       - name: Install
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Schema
         run: npm run db:push -- --force
