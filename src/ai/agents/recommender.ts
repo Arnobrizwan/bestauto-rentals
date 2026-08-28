@@ -80,6 +80,10 @@ function inferBudget(brief: string): number | undefined {
   if (perDay) return Number(perDay[1]);
   const under = brief.match(/(?:under|below|max(?:imum)?|up to)\s*(?:£|\$)?\s*(\d{2,4})/i);
   if (under) return Number(under[1]);
+
+  // No figure given, but "cheap" is still a budget statement. Treat it as a
+  // soft cap so price actually influences the ranking.
+  if (/\b(cheap|cheapest|budget|affordable|economical|inexpensive|low cost)\b/i.test(brief)) return 70;
   return undefined;
 }
 
@@ -106,6 +110,26 @@ export function inferPassengers(brief: string): number | undefined {
   return undefined;
 }
 
+/** Pulls hard preferences the caller did not pass explicitly out of the brief. */
+function inferPreferences(brief: string) {
+  const text = brief.toLowerCase();
+  const transmission: RecommendBrief["transmission"] = /\bautomatic\b|\bauto\b/.test(text)
+    ? "Automatic"
+    : /\bmanual\b|stick shift/.test(text)
+      ? "Manual"
+      : undefined;
+
+  const fuel: RecommendBrief["fuel"] = /\bhybrid\b/.test(text)
+    ? "Hybrid"
+    : /\belectric\b|\bev\b/.test(text)
+      ? "Electric"
+      : /\bdiesel\b/.test(text)
+        ? "Diesel"
+        : undefined;
+
+  return { transmission, fuel };
+}
+
 type Scored = { vehicle: VehicleWithStats; score: number; positives: string[]; negatives: string[] };
 
 function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, "occasion">> & RecommendBrief): Scored {
@@ -118,7 +142,7 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
   if (brief.passengers) {
     if (v.seats >= brief.passengers) {
       score += 18;
-      if (v.seats - brief.passengers <= 1) positives.push(`seats ${v.seats} without wasting space`);
+      if (v.seats - brief.passengers <= 1) positives.push(`seats ${v.seats} without wasting space on empty chairs`);
       else positives.push(`seats ${v.seats}`);
     } else {
       score -= 60;
@@ -129,7 +153,7 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
   if (brief.luggage) {
     if (v.bags >= brief.luggage) {
       score += 8;
-      positives.push(`${v.bags} bags of luggage`);
+      positives.push(`swallows ${v.bags} bags`);
     } else {
       score -= 18;
       negatives.push(`${v.bags}-bag boot is tight for ${brief.luggage}`);
@@ -140,15 +164,17 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
     const ratio = price / brief.budgetPerDay;
     if (ratio <= 0.7) {
       score += 20;
-      positives.push(`£${price}/day leaves headroom under your £${brief.budgetPerDay} budget`);
+      positives.push(`comes in at £${price}/day, well under your £${brief.budgetPerDay} budget`);
     } else if (ratio <= 1) {
       score += 24;
-      positives.push(`£${price}/day sits inside your £${brief.budgetPerDay} budget`);
+      positives.push(`lands at £${price}/day, inside your £${brief.budgetPerDay} budget`);
     } else if (ratio <= 1.15) {
       score -= 8;
       negatives.push(`£${price}/day is just over budget`);
     } else {
-      score -= 45;
+      // Scale with how far over: a flat penalty rated a £3,200 hypercar the
+      // same as an £89 SUV against a £70 budget, which is plainly wrong.
+      score -= 25 + Math.min(75, (ratio - 1.15) * 45);
       negatives.push(`£${price}/day is well over your £${brief.budgetPerDay} budget`);
     }
   }
@@ -156,7 +182,7 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
   if (brief.transmission) {
     if (v.transmission === brief.transmission) {
       score += 10;
-      positives.push(brief.transmission.toLowerCase());
+      positives.push(brief.transmission === "Automatic" ? "is an automatic" : "has the manual box you asked for");
     } else {
       score -= 25;
       negatives.push(`${v.transmission.toLowerCase()} only`);
@@ -166,41 +192,80 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
   if (brief.fuel) {
     if (v.fuel === brief.fuel) {
       score += 12;
-      positives.push(`${v.fuel.toLowerCase()} as asked`);
+      positives.push(`runs on ${v.fuel.toLowerCase()}, as asked`);
     } else score -= 12;
   }
 
   if (brief.location && v.location === brief.location) {
     score += 8;
-    positives.push(`already at ${v.location}`);
+    positives.push(`is already sitting at ${v.location}`);
   }
 
+  // Occasion fit also produces the human-readable rationale, so a brief with no
+  // budget or party size still gets a reason that references what was asked for
+  // rather than falling back to generic praise.
   switch (brief.occasion) {
     case "family":
-      if (v.seats >= 5) score += 14;
-      if (v.bodyType === "SUV") score += 10;
-      if (v.fuel === "Hybrid") score += 6;
+      if (v.seats >= 5) {
+        score += 14;
+        positives.push(`carries ${v.seats} without anyone drawing the short straw`);
+      }
+      if (v.bodyType === "SUV") {
+        score += 10;
+        positives.push("has an SUV boot that takes the holiday kit");
+      }
+      if (v.fuel === "Hybrid") {
+        score += 6;
+        positives.push("is a hybrid, so the long motorway legs cost less");
+      }
       if (v.segment === "exclusive") score -= 30;
       if (v.doors >= 4) score += 6;
       break;
     case "business":
-      if (v.transmission === "Automatic") score += 10;
-      if (v.bodyType === "Sedan") score += 12;
+      if (v.transmission === "Automatic") {
+        score += 10;
+        positives.push("is an automatic, which matters in stop-start traffic");
+      }
+      if (v.bodyType === "Sedan") {
+        score += 12;
+        positives.push("is a saloon that reads right pulling up to a client");
+      }
       if (v.segment === "exclusive") score -= 8;
       break;
     case "city":
-      if (v.segment === "small") score += 20;
-      if (price < 60) score += 10;
-      if (v.co2 < 130) score += 6;
+      if (v.segment === "small") {
+        score += 20;
+        positives.push("has a footprint that fits the gaps other cars drive past");
+      }
+      if (price < 60) {
+        score += 10;
+        positives.push(`costs £${price}/day for errands that do not need more`);
+      }
+      if (v.co2 < 130) {
+        score += 6;
+        positives.push(`emits ${v.co2}g/km, so the clean-air zones are painless`);
+      }
       if (v.bodyType === "SUV") score -= 10;
       break;
     case "special":
-      if (v.segment === "exclusive") score += 26;
-      if (v.rating >= 4.8) score += 8;
+      if (v.segment === "exclusive") {
+        score += 26;
+        positives.push("is the kind of car the photographs end up being about");
+      }
+      if (v.rating >= 4.8) {
+        score += 8;
+        positives.push(`holds a ${v.rating} rating from people who booked it for the same reason`);
+      }
       break;
     case "leisure":
-      if (v.segment === "large") score += 10;
-      if (v.bags >= 3) score += 6;
+      if (v.segment === "large") {
+        score += 10;
+        positives.push("is enough car to make the drive part of the trip");
+      }
+      if (v.bags >= 3) {
+        score += 6;
+        positives.push(`has ${v.bags} bags of boot`);
+      }
       break;
     default:
       break;
@@ -213,15 +278,23 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
   return { vehicle: v, score, positives, negatives };
 }
 
-function headlineFor(s: Scored, occasion: RecommendBrief["occasion"]) {
+function headlineFor(s: Scored, occasion: RecommendBrief["occasion"], rank: number) {
   const v = s.vehicle;
-  if (occasion === "family") return `Room for ${v.seats} and the bags`;
-  if (occasion === "city") return "Small, cheap, easy to park";
-  if (occasion === "business") return "Quiet, automatic, arrives well";
-  if (occasion === "special") return "The one people photograph";
-  if (v.segment === "exclusive") return "Our headline car";
-  if (Number(v.pricePerDay) < 60) return "Best value on the fleet";
-  return `${v.transmission} ${v.bodyType.toLowerCase()}`;
+  // The lead pick gets the occasion headline; the alternatives get something
+  // specific to the car, so the three cards do not read identically.
+  // Only use the occasion headline when the car actually earns the claim - a
+  // £89 SUV should not be labelled "small, cheap, easy to park".
+  if (rank === 0) {
+    if (occasion === "family" && v.seats >= 5) return `Room for ${v.seats} and the bags`;
+    if (occasion === "city" && v.segment === "small") return "Small, cheap, easy to park";
+    if (occasion === "business" && v.transmission === "Automatic") return "Quiet, automatic, arrives well";
+    if (occasion === "special" && v.segment === "exclusive") return "The one people photograph";
+    if (occasion === "leisure" && v.bags >= 3) return "Built for the long way round";
+  }
+  if (v.segment === "exclusive") return `${v.bodyType}, ${v.seats} seats, no subtlety`;
+  if (Number(v.pricePerDay) < 60) return "The value pick";
+  if (v.fuel === "Hybrid") return `Hybrid ${v.bodyType}, ${v.seats} seats`;
+  return `${v.transmission} ${v.bodyType}, ${v.seats} seats`;
 }
 
 function sentence(parts: string[]) {
@@ -232,19 +305,27 @@ function sentence(parts: string[]) {
 
 export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithStats[]) {
   const text = brief.brief ?? "";
+  const inferred = inferPreferences(text);
   const resolved: RecommendBrief & { occasion: NonNullable<RecommendBrief["occasion"]> } = {
     ...brief,
     occasion: brief.occasion && brief.occasion !== "unknown" ? brief.occasion : inferOccasion(text),
     budgetPerDay: brief.budgetPerDay ?? inferBudget(text),
     passengers: brief.passengers ?? inferPassengers(text),
+    transmission: brief.transmission ?? inferred.transmission,
+    fuel: brief.fuel ?? inferred.fuel,
   };
 
-  // Seat count is a hard constraint: a car that cannot carry the party is not a
-  // worse recommendation, it is not a recommendation. Filter before ranking,
-  // and only fall back to the unfiltered pool if nothing at all qualifies.
-  const feasible = resolved.passengers
-    ? pool.filter((v) => v.seats >= resolved.passengers!)
-    : pool;
+  // Hard constraints. A car that cannot carry the party, or that has the wrong
+  // gearbox when one was explicitly asked for, is not a worse recommendation -
+  // it is not a recommendation. Filter before ranking, and fall back to the
+  // unfiltered pool only if nothing at all qualifies (better to answer with a
+  // caveat than to answer with nothing).
+  const feasible = pool.filter(
+    (v) =>
+      (!resolved.passengers || v.seats >= resolved.passengers) &&
+      (!resolved.transmission || v.transmission === resolved.transmission) &&
+      (!resolved.fuel || v.fuel === resolved.fuel),
+  );
   const candidates = feasible.length ? feasible : pool;
 
   const ranked = candidates
@@ -259,10 +340,12 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
       slug: v.slug,
       name: v.name,
       rank: i + 1,
-      headline: headlineFor(s, resolved.occasion),
+      headline: headlineFor(s, resolved.occasion, i),
       reason: why
         ? `The ${v.name} ${why}.`
-        : `The ${v.name} is a well-rated ${v.bodyType.toLowerCase()} at £${Number(v.pricePerDay)}/day.`,
+        : `The ${v.name} pairs ${v.seats} seats and a ${v.transmission.toLowerCase()} box at £${Number(
+            v.pricePerDay,
+          )}/day, and it is one of the highest-rated cars we run.`,
       tradeoff: s.negatives[0] ? `Worth knowing: ${s.negatives[0]}.` : "",
       fitScore: Math.max(1, Math.min(100, Math.round(s.score))),
       pricePerDay: Number(v.pricePerDay),
@@ -307,7 +390,11 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
   // With a hosted model available, the rules engine still runs first: it
   // shortlists candidates so the model reasons over real rows, and it is the
   // safety net if the call fails or returns something unusable.
-  const feasiblePool = brief.passengers ? pool.filter((v) => v.seats >= brief.passengers!) : pool;
+  const feasiblePool = pool.filter(
+    (v) =>
+      (!brief.passengers || v.seats >= brief.passengers) &&
+      (!brief.transmission || v.transmission === brief.transmission),
+  );
   const candidates = (feasiblePool.length ? feasiblePool : pool).slice(0, 12).map((v) => ({
     slug: v.slug,
     name: v.name,
@@ -347,8 +434,11 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
       .filter((p) => {
         const v = bySlug.get(p.slug);
         if (!v) return false;
-        // Guard the model against the same mistake the rules engine used to make.
-        return !brief.passengers || v.seats >= brief.passengers;
+        // Hold the model to the same hard constraints as the rules engine.
+        return (
+          (!brief.passengers || v.seats >= brief.passengers) &&
+          (!brief.transmission || v.transmission === brief.transmission)
+        );
       })
       .slice(0, 3)
       .map((p, i) => {

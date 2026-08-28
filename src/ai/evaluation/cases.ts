@@ -81,7 +81,7 @@ export type RecommenderCase = {
   id: string;
   description: string;
   brief: Record<string, unknown>;
-  expect: { minSeats?: number; maxPricePerDay?: number; segmentIn?: string[]; count?: number };
+  expect: { minSeats?: number; maxPricePerDay?: number; segmentIn?: string[]; count?: number; transmission?: string };
 };
 
 export const RECOMMENDER_CASES: RecommenderCase[] = [
@@ -104,6 +104,14 @@ export const RECOMMENDER_CASES: RecommenderCase[] = [
     description: "A £50 budget must not lead with a hypercar",
     brief: { brief: "Cheap runaround for the city", budgetPerDay: 50, occasion: "city" },
     expect: { maxPricePerDay: 80, segmentIn: ["small", "large"] },
+  },
+  {
+    id: "automatic-from-free-text",
+    description: "\"automatic\" in the brief is treated as a real constraint",
+    brief: { brief: "Something cheap and automatic for city errands in London" },
+    // "cheap" has to bite even with no figure attached: a hypercar is never the
+    // answer to this brief, whatever else matches.
+    expect: { transmission: "Automatic", maxPricePerDay: 150 },
   },
   {
     id: "wedding",

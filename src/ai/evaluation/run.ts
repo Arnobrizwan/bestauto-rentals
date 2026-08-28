@@ -137,6 +137,15 @@ async function runRecommenderSuite() {
       });
     }
 
+    if (testCase.expect.transmission) {
+      const wrong = result.picks.filter((p) => p.transmission !== testCase.expect.transmission);
+      checks.push({
+        name: `every pick is ${testCase.expect.transmission}`,
+        passed: wrong.length === 0,
+        detail: wrong.length ? wrong.map((w) => `${w.name}(${w.transmission})`).join(", ") : "all match",
+      });
+    }
+
     checks.push({
       name: "every pick has a reason",
       passed: result.picks.every((p) => p.reason.trim().length > 10),
