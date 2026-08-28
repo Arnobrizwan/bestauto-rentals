@@ -7,10 +7,11 @@ automation engine** wired through the middle.
 
 | | |
 |---|---|
-| **Live site** | _(see Submission section)_ |
-| **Admin dashboard** | `/admin` |
-| **API reference** | `/api/openapi` |
-| **Health check** | `/api/health` |
+| **Live site** | **https://bestauto-rentals.vercel.app** |
+| **Admin dashboard** | **https://bestauto-rentals.vercel.app/admin** |
+| **API reference** | https://bestauto-rentals.vercel.app/api/openapi |
+| **Health check** | https://bestauto-rentals.vercel.app/api/health |
+| **Repository** | https://github.com/Arnobrizwan/bestauto-rentals |
 | **Figma source** | [Task file](https://www.figma.com/design/YZVObhEegXBdtzHYA2u0fk/Task?node-id=0-1) |
 
 ---
@@ -49,7 +50,7 @@ No UI kit, no chart wrapper library, no AI SDK. The dependency list is deliberat
 ## Running it
 
 ```bash
-git clone <repo-url> && cd bestauto
+git clone https://github.com/Arnobrizwan/bestauto-rentals.git && cd bestauto-rentals
 npm install
 
 # Point at any Postgres instance (Neon, Supabase, local)
@@ -300,9 +301,9 @@ Worth stating plainly rather than leaving to be discovered:
 
 ## Submission
 
-- **Live site:** _see the deployment URL_
-- **Repository:** _see the repository URL_
-- **Admin dashboard:** `/admin`
+- **Live site:** https://bestauto-rentals.vercel.app
+- **Repository:** https://github.com/Arnobrizwan/bestauto-rentals
+- **Admin dashboard:** https://bestauto-rentals.vercel.app/admin
 - **AI demonstration:** the concierge widget (bottom-right, every page), the matcher on the home
   page, the sandbox at `/admin/ai`, and the brief at the top of `/admin`
 - **Automation:** `/admin/automations` — make a booking on the site, then watch the run appear
