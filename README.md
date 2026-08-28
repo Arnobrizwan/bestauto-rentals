@@ -329,6 +329,16 @@ schedule.daily  ─┘
 **Actions:** `send_email`, `send_sms`, `notify_slack`, `create_task`, `tag_record`,
 `adjust_inventory`, `post_webhook`
 
+**Delivery.** Outbound messages go to an outbox first, and `/api/cron/drain-outbox` attempts them
+oldest-first every half hour behind `CRON_SECRET`: delivered messages are marked sent with a
+timestamp, a failure backs off exponentially, and a message that cannot be delivered after six
+attempts is marked `dead` rather than retried forever. The engine's comment always described the
+outbox as the delivery boundary "so a failing vendor never loses the message" — but nothing drained
+it and nothing retried, so that was an intention rather than a guarantee. It also wrote `sent` as
+soon as `RESEND_API_KEY` was present even though no code has ever called Resend, which claimed a
+delivery that had not happened; marking a message sent is now the drainer's job. Wiring a real vendor
+is a change in one function and nowhere else, which is the point of the boundary.
+
 **Shipped rules:** hot-lead escalation, warm-lead nurture, cold-lead digest, booking confirmation,
 high-value booking review (>৳50,000 opens an NID verification task), cancellation recovery, concierge handoff,
 daily operations digest.

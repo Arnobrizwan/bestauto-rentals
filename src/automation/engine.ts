@@ -87,7 +87,11 @@ async function runAction(action: Action, payload: Record<string, unknown>, ruleI
           recipient: to,
           subject: render(String(cfg.subject ?? ""), payload),
           body: render(String(cfg.template ?? ""), payload),
-          status: process.env.RESEND_API_KEY ? "sent" : "queued",
+          // Always queued. This used to write "sent" whenever RESEND_API_KEY
+          // was present, but nothing in the codebase has ever called Resend —
+          // the row claimed a delivery that had not happened. Marking a
+          // message sent is the drainer's job, once a provider has accepted it.
+          status: "queued",
           ruleId,
         });
         return { action: action.type, status: "success", detail: `Email queued to ${to}.` };

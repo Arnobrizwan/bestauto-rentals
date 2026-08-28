@@ -225,8 +225,14 @@ export const outbox = pgTable("outbox", {
   recipient: text("recipient").notNull(),
   subject: text("subject").notNull().default(""),
   body: text("body").notNull().default(""),
+  /** queued | sent | dead */
   status: text("status").notNull().default("queued"),
   ruleId: text("rule_id").notNull().default(""),
+  /** Delivery bookkeeping. Without these the outbox is a list, not a queue. */
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error").notNull().default(""),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

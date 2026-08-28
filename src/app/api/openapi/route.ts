@@ -136,6 +136,14 @@ export async function GET(req: Request) {
           responses: { "200": { description: "Accepted" }, "401": errorResponse, "404": errorResponse },
         },
       },
+      "/api/cron/drain-outbox": {
+        get: {
+          summary: "Attempt delivery of queued outbound messages (Bearer CRON_SECRET)",
+          description:
+            "Claims due messages oldest-first, marks delivered ones sent, backs off exponentially on failure and marks a message dead after six attempts. This is what makes the outbox a delivery guarantee rather than a list.",
+          responses: { "200": { description: "Counts of claimed, delivered, failed and dead" }, "401": errorResponse, "503": errorResponse },
+        },
+      },
       "/api/cron/daily-digest": {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },

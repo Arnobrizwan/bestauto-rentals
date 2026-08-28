@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
 
 import { db } from "@/server/db/client";
 import { automationRules, automationRuns, events, outbox } from "@/server/db/schema";
@@ -65,4 +65,50 @@ export async function automationStats() {
     avgMs: Math.round(Number(runRow?.avgMs ?? 0)),
     notifications: outboxRow?.n ?? 0,
   };
+}
+
+/**
+ * Messages due for a delivery attempt.
+ *
+ * Ordered by when they became due so a backlog drains oldest-first, and capped
+ * so one run cannot hold a function open indefinitely.
+ */
+export async function claimOutboxBatch(limit = 25) {
+  return db
+    .select()
+    .from(outbox)
+    .where(and(eq(outbox.status, "queued"), lte(outbox.nextAttemptAt, new Date())))
+    .orderBy(asc(outbox.nextAttemptAt))
+    .limit(limit);
+}
+
+export async function markOutboxDelivered(id: string) {
+  await db
+    .update(outbox)
+    .set({ status: "sent", deliveredAt: new Date(), lastError: "" })
+    .where(eq(outbox.id, id));
+}
+
+/**
+ * Records a failed attempt and schedules the next one.
+ *
+ * Exponential backoff so a provider having a bad minute is not hammered, and a
+ * terminal `dead` state so a permanently undeliverable message stops consuming
+ * attempts forever and becomes visible as a failure rather than a silent
+ * retry loop.
+ */
+export async function markOutboxFailed(id: string, attempts: number, error: string, maxAttempts: number) {
+  const next = attempts + 1;
+  const dead = next >= maxAttempts;
+  const backoffMs = Math.min(60 * 60_000, 2 ** next * 30_000);
+  await db
+    .update(outbox)
+    .set({
+      attempts: next,
+      lastError: error.slice(0, 500),
+      status: dead ? "dead" : "queued",
+      nextAttemptAt: new Date(Date.now() + backoffMs),
+    })
+    .where(eq(outbox.id, id));
+  return { dead, attempts: next };
 }
