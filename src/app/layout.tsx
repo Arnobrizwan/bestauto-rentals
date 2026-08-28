@@ -36,20 +36,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       // globals.css sets scroll-behavior: smooth; declaring it here lets Next
       // suppress it during route transitions instead of animating every jump.
       data-scroll-behavior="smooth"
+      // Browser extensions write their own attributes onto <html> before React
+      // hydrates — a grammar checker adding `data-qb-installed` is what surfaced
+      // this — and React then reports a mismatch the page did not cause and
+      // cannot prevent. This suppresses the comparison for this element's own
+      // attributes only; a genuine mismatch anywhere inside still reports.
+      suppressHydrationWarning
       className={`${outfit.variable} ${inter.variable} ${nunito.variable}`}
     >
-      <head>
+      <body className="min-h-dvh antialiased">
         {/*
           The reveal animation starts every [data-reveal] section at opacity 0
           and relies on JavaScript to show it. With scripting unavailable that
           is not a missing animation, it is a blank page, so scripting off
           means no hiding at all.
+
+          This lives in <body> rather than a hand-written <head>: the App
+          Router builds the head itself, and rendering a second one alongside
+          it is asking for exactly the kind of mismatch above. A style element
+          applies to the whole document wherever it sits.
         */}
         <noscript>
           <style>{"[data-reveal]{opacity:1 !important;transform:none !important}"}</style>
         </noscript>
-      </head>
-      <body className="min-h-dvh antialiased">{children}</body>
+        {children}
+      </body>
     </html>
   );
 }
