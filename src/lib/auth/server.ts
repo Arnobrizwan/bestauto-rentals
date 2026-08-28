@@ -29,11 +29,18 @@ export async function getCurrentAdmin() {
 /**
  * Guard for route handlers. Returns a 401/403 response to return early with,
  * or null when the caller is allowed through.
+ *
+ * This loads the account rather than trusting the cookie's claims. Checking
+ * the signature alone meant a deactivated or deleted administrator kept full
+ * write access to every API route until the cookie expired eight hours later
+ * — while the pages, which use `getCurrentAdmin`, locked them out on the next
+ * navigation. The role is read from the row too, so demoting an admin to
+ * viewer takes effect immediately instead of at their next sign-in.
  */
 export async function requireAdmin(options: { role?: "admin" } = {}) {
-  const claims = await getSessionClaims();
-  if (!claims) return fail(401, "Authentication required.");
-  if (options.role === "admin" && claims.role !== "admin") {
+  const user = await getCurrentAdmin();
+  if (!user) return fail(401, "Authentication required.");
+  if (options.role === "admin" && user.role !== "admin") {
     return fail(403, "This action requires an admin account.");
   }
   return null;

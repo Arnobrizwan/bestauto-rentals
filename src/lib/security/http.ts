@@ -70,7 +70,16 @@ export function sanitizeText(input: string, maxLength = 2000) {
 
 export function requireCronAuth(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return null; // Unset in preview/dev - the route stays open for the demo.
+
+  // Same reasoning as the webhook receiver: an unset secret cannot authorise
+  // anything, and the scheduled endpoint runs the digest and fires automation
+  // rules. Production refuses rather than running for whoever asks; dev and
+  // preview stay open so the job can be triggered by hand.
+  if (!secret) {
+    return process.env.NODE_ENV === "production"
+      ? fail(503, "The scheduled endpoint is not configured. Set CRON_SECRET.")
+      : null;
+  }
   const header = req.headers.get("authorization");
   if (header === `Bearer ${secret}`) return null;
   return fail(401, "Unauthorised.");

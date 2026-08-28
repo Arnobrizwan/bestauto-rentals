@@ -51,10 +51,24 @@ export function evaluateConditions(conditions: Condition[], payload: Record<stri
   return conditions.every((c) => compare(readPath(payload, c.field), c.op, c.value));
 }
 
+/**
+ * Environment variables a rule template may read.
+ *
+ * Rules live in the database and are meant to be operator-editable, so an
+ * unrestricted `{{env.*}}` would be a way to exfiltrate any secret the process
+ * holds — `{{env.SESSION_SECRET}}` in the body of a `post_webhook` action
+ * would send the session signing key to whatever URL the rule names. Only the
+ * variables a shipped rule genuinely needs are readable.
+ */
+const TEMPLATE_ENV_ALLOWLIST = new Set(["OPS_WEBHOOK_URL"]);
+
 /** `{{lead.name}}` interpolation with a safe fallback for missing keys. */
 export function render(template: string, payload: Record<string, unknown>): string {
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, path: string) => {
-    if (path.startsWith("env.")) return process.env[path.slice(4)] ?? "";
+    if (path.startsWith("env.")) {
+      const key = path.slice(4);
+      return TEMPLATE_ENV_ALLOWLIST.has(key) ? (process.env[key] ?? "") : "";
+    }
     const value = readPath(payload, path);
     return value === undefined || value === null ? "" : String(value);
   });

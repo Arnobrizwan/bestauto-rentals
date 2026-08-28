@@ -16,7 +16,13 @@ const ALLOWED = new Set(["stripe", "partner", "crm", "fleet-telematics"]);
  */
 async function verify(source: string, req: Request, raw: string) {
   const secret = process.env[`WEBHOOK_SECRET_${source.toUpperCase().replace(/-/g, "_")}`];
-  if (!secret) return true;
+
+  // No secret means nothing can be verified. Accepting the request anyway
+  // would let anyone POST to /api/webhooks/stripe and fan their payload
+  // straight into the automation engine, so production refuses; a local or
+  // preview environment still accepts unsigned calls so the flow can be
+  // demonstrated without provisioning secrets.
+  if (!secret) return process.env.NODE_ENV !== "production";
 
   const provided = req.headers.get("x-signature") ?? "";
   const key = await crypto.subtle.importKey(
