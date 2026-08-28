@@ -83,7 +83,8 @@ npm run dev         # sign in at /login with ops@bestauto.com.bd
 
 | Variable | Required | Effect |
 |---|---|---|
-| `DATABASE_URL` | **yes** | Postgres connection string |
+| `APP_DATABASE_URL` | no | Postgres connection string, read **before** `DATABASE_URL`. Production uses it so the Vercel Neon integration cannot re-sync the app back onto the database it manages |
+| `DATABASE_URL` | **yes** | Postgres connection string, used when the override is absent |
 | `ANTHROPIC_API_KEY` | no | Switches all four AI agents to Claude |
 | `OPENAI_API_KEY` | no | Same, for OpenAI-compatible endpoints |
 | `ANTHROPIC_MODEL` / `OPENAI_MODEL` | no | Override the default model id |
@@ -416,6 +417,17 @@ the AI concierge, and get identical scoring and automation from both.
   version-information block above version 6. An independent decoder confirmed all four sample codes
   round-trip, and `npm run test:qr` pins them so a regression fails CI instead of shipping codes that
   no longer scan.
+- **The database and the functions sit in Singapore, together.** Latency here is a placement
+  problem, not a query problem: a query measures 7ms, so the only number that mattered was how far
+  the request travelled. Functions originally ran in `iad1` beside a `us-east-1` database while the
+  audience is served from `bom1`, and caching cannot help a page that must be dynamic. The database
+  is now a Neon project in `ap-southeast-1` and `vercel.json` pins functions to `sin1`, which keeps
+  the two co-located — that matters more than the last hop, because a dynamic page makes several
+  queries but only one trip to the visitor. `/cars` went from ~430ms to ~275ms, and every admin page
+  with it. The connection string is read from **`APP_DATABASE_URL`**, which nothing manages: the
+  Neon integration owns `DATABASE_URL` and the `POSTGRES_*` family and re-syncs them, so pointing the
+  app elsewhere by editing `DATABASE_URL` would be undone silently. Clearing the override falls back
+  to the original database, which is untouched and remains the rollback.
 - **The public pages are served from the edge, and that was a real bug.** Every route originally
   carried `force-dynamic`. `x-vercel-id` reads `bom1::iad1`: requests enter at Mumbai and the
   function runs in Washington, beside the database. The app's own measurement of a query is 7ms,
