@@ -24,7 +24,13 @@ jobs:
       # drizzle-kit rejected it outright. The database-backed steps therefore
       # run against a real Neon branch when DATABASE_URL is configured, and are
       # skipped otherwise so pull requests from forks still get the rest.
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # `next build` collects page data, which evaluates the database client,
+      # which throws when no connection string is present. It never connects at
+      # build time, so a placeholder is enough to get the build through; the
+      # separate flag is what decides whether the seeded steps can run, because
+      # once a fallback is in place DATABASE_URL is never empty.
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://build:build@localhost:5432/build' }}
+      HAS_DATABASE: ${{ secrets.DATABASE_URL != '' }}
       # The app refuses to start a production session without this; CI sets it
       # so the guard itself is exercised.
       SESSION_SECRET: ci-only-secret-not-used-anywhere-real-32
@@ -69,17 +75,17 @@ jobs:
       # the real fleet, which is why it needs a seeded database rather than a
       # stub.
       - name: Seed the review branch
-        if: env.DATABASE_URL != ''
+        if: env.HAS_DATABASE == 'true'
         run: |
           npm run db:push -- --force
           npm run db:seed
 
       - name: AI evaluation suite
-        if: env.DATABASE_URL != ''
+        if: env.HAS_DATABASE == 'true'
         run: npm run eval
 
       - name: Note the skipped suite
-        if: env.DATABASE_URL == ''
+        if: env.HAS_DATABASE != 'true'
         run: |
           echo "No DATABASE_URL secret configured, so the AI evaluation suite did not run here." >> "$GITHUB_STEP_SUMMARY"
           echo "Set it to a disposable Neon branch to enable it — never the production database, because db:seed truncates." >> "$GITHUB_STEP_SUMMARY"
