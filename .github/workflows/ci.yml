@@ -17,29 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # The evaluation suite scores the recommender against the real fleet, so it
-    # needs a database rather than a stub. A throwaway Postgres gives the whole
-    # pipeline the same shape as production without reaching for the Neon
-    # instance the live site runs on.
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: bestauto
-          POSTGRES_PASSWORD: bestauto
-          POSTGRES_DB: bestauto
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bestauto"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-
     env:
-      DATABASE_URL: postgresql://bestauto:bestauto@localhost:5432/bestauto
-      # The app refuses to start a production session without this; CI builds
-      # with it set so the guard itself is exercised.
+      # The app talks to Postgres over `drizzle-orm/neon-http`, which speaks to
+      # a Neon endpoint rather than to a socket, so a `postgres:16` service
+      # container cannot stand in for it — that was the first attempt and
+      # drizzle-kit rejected it outright. The database-backed steps therefore
+      # run against a real Neon branch when DATABASE_URL is configured, and are
+      # skipped otherwise so pull requests from forks still get the rest.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # The app refuses to start a production session without this; CI sets it
+      # so the guard itself is exercised.
       SESSION_SECRET: ci-only-secret-not-used-anywhere-real-32
       NEXT_TELEMETRY_DISABLED: "1"
 
@@ -51,29 +38,20 @@ jobs:
           node-version: 22
           cache: npm
 
-      # `npm ci` rather than `npm install` would be the stricter choice, and was
-      # the first attempt. It cannot work here: @unrs/resolver-binding-wasm32-wasi
-      # pulls @emnapi/core and @emnapi/runtime through a floating range, and a
-      # lockfile resolved on macOS pins 1.10.0 where Linux resolves 1.11.3, so
-      # `npm ci` refuses the tree on the runner. Pinning them through overrides
-      # drops them from the lockfile on macOS instead of reconciling the two.
-      # The honest fix is to regenerate the lockfile on Linux; until then this
-      # installs against the same lockfile without failing on that one
-      # platform-specific optional dependency.
+      # `npm ci` would be the stricter choice and was the first attempt. It
+      # cannot work here: @unrs/resolver-binding-wasm32-wasi pulls @emnapi/core
+      # and @emnapi/runtime through a floating range, and a lockfile resolved on
+      # macOS pins 1.10.0 where Linux resolves 1.11.3, so `npm ci` refuses the
+      # tree on the runner. Regenerating the lockfile on Linux is the real fix.
       - name: Install
         run: npm install --no-audit --no-fund
 
-      - name: Schema
-        run: npm run db:push -- --force
-
-      - name: Seed
-        run: npm run db:seed
-
-      # Cheap, deterministic checks first: they fail fast and need no database.
+      # Everything below this point needs no database, so it runs everywhere and
+      # fails fast.
       - name: QR encoder goldens
         run: npm run test:qr
 
-      - name: Sidebar route coverage
+      - name: Sidebar and OpenAPI route coverage
         run: npm run test:routes
 
       - name: Types
@@ -82,14 +60,29 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # The gate that has caught real defects. It asserts behaviour rather than
-      # wording, so it grades the deterministic engines and a hosted model
-      # alike, and exits non-zero below 85%.
-      - name: AI evaluation suite
-        run: npm run eval
-
       - name: Build
         run: npm run build
+
+      # The gate that has caught real defects. It asserts behaviour rather than
+      # wording, so it grades the deterministic engines and a hosted model
+      # alike, and exits non-zero below 85%. It scores the recommender against
+      # the real fleet, which is why it needs a seeded database rather than a
+      # stub.
+      - name: Seed the review branch
+        if: env.DATABASE_URL != ''
+        run: |
+          npm run db:push -- --force
+          npm run db:seed
+
+      - name: AI evaluation suite
+        if: env.DATABASE_URL != ''
+        run: npm run eval
+
+      - name: Note the skipped suite
+        if: env.DATABASE_URL == ''
+        run: |
+          echo "No DATABASE_URL secret configured, so the AI evaluation suite did not run here." >> "$GITHUB_STEP_SUMMARY"
+          echo "Set it to a disposable Neon branch to enable it — never the production database, because db:seed truncates." >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy to Vercel
@@ -98,9 +91,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # The secrets context is not available to `if:`, so the token is lifted
-    # into the environment here and the step tests that instead. Without it the
-    # job succeeds without deploying rather than failing on every fork.
+    # The secrets context is not available to `if:`, so the token is lifted into
+    # the environment here and the step tests that instead. Without it the job
+    # succeeds without deploying rather than failing on every fork.
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -119,7 +112,7 @@ jobs:
         run: echo "No VERCEL_TOKEN set — Vercel's Git integration handles deployment." >> "$GITHUB_STEP_SUMMARY"
 
       # Vercel's own Git integration already deploys on push. This is the
-      # explicit path for when that is turned off.
+      # explicit path for when that is switched off.
       - name: Deploy
         if: env.VERCEL_TOKEN != ''
         run: |
