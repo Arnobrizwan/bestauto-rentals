@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, types, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # The evaluation suite scores the recommender against the real fleet, so it
+    # needs a database rather than a stub. A throwaway Postgres gives the whole
+    # pipeline the same shape as production without reaching for the Neon
+    # instance the live site runs on.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bestauto
+          POSTGRES_PASSWORD: bestauto
+          POSTGRES_DB: bestauto
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bestauto"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://bestauto:bestauto@localhost:5432/bestauto
+      # The app refuses to start a production session without this; CI builds
+      # with it set so the guard itself is exercised.
+      SESSION_SECRET: ci-only-secret-not-used-anywhere-real-32
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Schema
+        run: npm run db:push -- --force
+
+      - name: Seed
+        run: npm run db:seed
+
+      # Cheap, deterministic checks first: they fail fast and need no database.
+      - name: QR encoder goldens
+        run: npm run test:qr
+
+      - name: Sidebar route coverage
+        run: npm run test:routes
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # The gate that has caught real defects. It asserts behaviour rather than
+      # wording, so it grades the deterministic engines and a hosted model
+      # alike, and exits non-zero below 85%.
+      - name: AI evaluation suite
+        run: npm run eval
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to Vercel
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # The secrets context is not available to `if:`, so the token is lifted
+    # into the environment here and the step tests that instead. Without it the
+    # job succeeds without deploying rather than failing on every fork.
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Skip when no token is configured
+        if: env.VERCEL_TOKEN == ''
+        run: echo "No VERCEL_TOKEN set — Vercel's Git integration handles deployment." >> "$GITHUB_STEP_SUMMARY"
+
+      # Vercel's own Git integration already deploys on push. This is the
+      # explicit path for when that is turned off.
+      - name: Deploy
+        if: env.VERCEL_TOKEN != ''
+        run: |
+          npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx vercel build --prod --token="$VERCEL_TOKEN"
+          npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

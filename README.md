@@ -22,7 +22,7 @@ automation engine** wired through the middle.
 
 | Requirement | Where |
 |---|---|
-| Recreate the dashboard design accurately | `/admin` — greeting bar, three stat cards, Best Seller, Recent Transactions, Sales Analytics area chart, Sales by Countries choropleth, grouped sidebar |
+| Recreate the dashboard design accurately | `/admin` — greeting bar, three stat cards, Best Seller, Recent Transactions, Sales Analytics area chart, Sales by Countries choropleth, and the full grouped sidebar at the design's depth — see [Admin dashboard](#admin-dashboard) |
 | Dynamic data, not hard-coded UI | Every figure is a SQL aggregate over `bookings`. There is not one hard-coded number in the dashboard |
 | Functional charts, statistics, tables, filters | Date-range filter (4 presets + custom range), fleet/booking/lead/customer tables with search, filter, sort and pagination — all URL-driven |
 | Responsive on mobile | Verified at 390px, 768px and 1440px+ |
@@ -73,6 +73,9 @@ npm run dev         # sign in at /login with ops@bestauto.com.bd
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint incl. the React Compiler rules |
 | `npm run db:push` / `db:seed` / `db:reset` | Schema and data |
+| `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables, and only when empty, so it is safe against a live database |
+| `npm run test:routes` | Asserts every sidebar link resolves and every admin page is linked |
+| `npm run test:qr` | Golden test for the QR encoder |
 | `npm run eval` | **AI evaluation suite** — 55 assertions, exits non-zero below 85% |
 | `npm run build:map` | Regenerates the world-map paths from the TopoJSON atlas |
 
@@ -92,6 +95,67 @@ npm run dev         # sign in at /login with ops@bestauto.com.bd
 | `WEBHOOK_SECRET_<SOURCE>` | no | Enables HMAC-SHA256 verification for that webhook source |
 
 **The AI layer runs fully with only `DATABASE_URL`.** See [AI layer](#ai-layer) for why.
+
+---
+
+## Admin dashboard
+
+Twenty-seven pages in six groups, matching the depth of the Figma sidebar.
+
+**The design is a retail/POS template.** Its Inventory group runs Products, Create Product, Expired
+Products, Low Stocks, Category, Sub Category, Brands, Units, Variant Attributes, Warranties, Print
+Barcode and Print QR Code; Stock runs Manage Stock, Stock Adjustment, Stock Transfer; Sales runs
+Sales, Invoices, Sales Return, Quotation and POS. The greeting even reads *"here's what's happening
+with your store today"*, and the Best Seller panel prices cars like stock units.
+
+Reproducing that vocabulary would describe a shop selling goods rather than a fleet on hire, so each
+item is carried across at its rental meaning. **The structure, grouping and depth are the design's;
+the words are the business's.**
+
+| Figma | Here | Why |
+|---|---|---|
+| Products · Create Product | Vehicles · Add vehicle | The catalogue, and a real create endpoint behind it |
+| Expired Products | **Document expiry** | Fitness, tax token, insurance and route permit. A lapsed one grounds the car |
+| Low Stocks | Low availability | Units free against units held, with recent demand alongside |
+| Category · Sub Category · Brands · Variant Attributes | Segments · Body types · Brands · Specs | One aggregate over four columns, sharing a component so they cannot drift |
+| Units | Units | The individual registered cars, on BRTA plates |
+| Warranties | Service history | Workshop spend per model — the number that decides what stays in the fleet |
+| Print Barcode · Print QR Code | Handover sheet · Vehicle QR | A printable counter sheet, and a scannable code per model |
+| Manage Stock | Availability | Day-by-day forward grid, plus handovers and returns due |
+| Stock Adjustment | Off-road & maintenance | Why a unit is not earning |
+| Stock Transfer | **Branch transfers** | One-way hires strand cars; this is the repositioning list |
+| Sales · Invoices · Sales Return · Quotation | Bookings · Invoices · Cancellations · Quotes | VAT shown inclusive, refunds computed from live policy |
+| POS | Counter booking | Posts to the same endpoint as the public site |
+| Super Admin | Team & roles | Create staff accounts; roles enforced server-side |
+
+Two of these are worth calling out because they are the ones a template would not have thought of.
+**Document expiry** exists because a car in Bangladesh cannot legally carry a paying passenger
+without four current papers, so an expiry board is an operational necessity rather than a nicety.
+**Branch transfers** exists because a one-way hire from Dhaka to Cox's Bazar leaves a car at the
+coast that somebody has to drive back, and that cost is invisible on a revenue-only view — counting
+pickups against dropoffs per branch surfaces it.
+
+`npm run test:routes` asserts the property that made the old seven-item sidebar safe: every link
+resolves to a page, and every admin page is reachable from the sidebar. No 404s.
+
+---
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request.
+
+The pipeline stands up a throwaway Postgres, pushes the schema and seeds it, because the evaluation
+suite scores the recommender against the **real fleet** rather than a stub — running it without a
+database would grade nothing. Cheap deterministic checks go first so failures come back fast:
+
+```
+QR encoder goldens  →  sidebar + OpenAPI route coverage  →  types  →  lint
+                    →  AI evaluation suite  →  production build
+```
+
+Deployment is Vercel's Git integration. The workflow also carries an explicit deploy job for when
+that is switched off; it stays inert unless `VERCEL_TOKEN` is configured, rather than failing every
+run on a fork.
 
 ---
 
@@ -233,7 +297,8 @@ Automation failures are logged and swallowed: a broken workflow must never fail 
 
 ## API
 
-16 endpoints. Full machine-readable spec at **`/api/openapi`**.
+21 endpoints across 28 method handlers. Full machine-readable spec at **`/api/openapi`** — it now
+covers every route the app serves, verified by a diff in CI rather than by hand.
 
 ```
 GET    /api/health                     liveness + dependency + engine status
@@ -279,7 +344,7 @@ rather than a cached counter. A client cannot post its own total.
 src/
 ├── app/
 │   ├── (site)/          customer front-end   — home, fleet, vehicle, confirmation
-│   ├── admin/           dashboard            — 7 pages
+│   ├── admin/           dashboard            — 27 pages, 6 sidebar groups
 │   └── api/             HTTP surface
 ├── ai/
 │   ├── provider/        vendor adapters behind one interface
@@ -289,7 +354,7 @@ src/
 │   └── evaluation/      golden cases + scored harness
 ├── automation/          engine, rule catalogue, types
 ├── server/
-│   ├── db/              Drizzle schema, client, deterministic seed
+│   ├── db/              Drizzle schema, client, deterministic seed, additive backfill
 │   ├── repositories/    all SQL lives here
 │   └── services/        booking, lead intake, insight snapshot
 ├── components/          ui primitives, site sections, admin, charts
@@ -297,7 +362,25 @@ src/
 └── lib/
     ├── auth/            password hashing, session signing, server-side guards
     ├── security/        rate limiting, validation, sanitisation, cron auth
-    └── observability/   structured logger with credential redaction
+    ├── observability/   structured logger with credential redaction
+    └── qr.ts            dependency-free QR encoder (byte mode, EC level M)
+
+scripts/
+├── build-world-map.mts  projects the TopoJSON atlas to SVG paths at build time
+├── verify-routes.ts     sidebar and OpenAPI route coverage
+└── verify-qr.ts         QR golden test
+```
+
+### Data model
+
+`vehicles` is the model a customer books; `vehicle_units` is the physical car that leaves the branch,
+on a BRTA plate, and it is what the operational tables hang off:
+
+```
+vehicles ──< vehicle_units ──< vehicle_documents   fitness · tax token · insurance · route permit
+                          └──< maintenance_jobs    why a unit is off the road
+bookings ──> vehicles, customers                   every dashboard figure aggregates from here
+coupons                                            the Bangladeshi promotional calendar
 ```
 
 **Why it is laid out this way.** SQL is confined to `repositories/`; business rules that cross
@@ -315,6 +398,13 @@ the AI concierge, and get identical scoring and automation from both.
 - **Deterministic compact numbers.** `Intl`'s compact notation disagrees between Node's ICU build and
   the browser (`61.4K` vs `61.4k`), which surfaced as a hydration mismatch. `formatCompact` is
   hand-rolled so server and client output are byte-identical.
+- **The QR sheet encodes its own codes.** `src/lib/qr.ts` is a byte-mode QR encoder — Galois-field
+  Reed-Solomon, the zigzag module walk, format information — emitting inline SVG, for the same reason
+  the world map ships as path data. The first attempt was wrong in three places: format-information
+  bit order, a column walk that revisited a column after stepping over the timing pattern, and no
+  version-information block above version 6. An independent decoder confirmed all four sample codes
+  round-trip, and `npm run test:qr` pins them so a regression fails CI instead of shipping codes that
+  no longer scan.
 - **URL as state.** Every filter, sort and page writes to the query string, so results are
   shareable, back-button-correct and server-rendered.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
@@ -393,7 +483,9 @@ Worth stating plainly rather than leaving to be discovered:
 
 - **Single-factor auth, no self-service.** Sessions are stateless signed cookies, which means signing
   out on one device does not invalidate a session already issued to another before it expires. There
-  is no password reset, no MFA, and accounts are created by the seed rather than an invite flow.
+  is no password reset and no MFA. Staff accounts *are* created from the dashboard now — Team &
+  roles — but a colleague's starting password is typed by the inviting admin and handed over directly,
+  because no email provider is wired up and inventing one would be worse than saying so.
 - **Rate limiting is in-process.** Fine for a single region; multi-region needs Redis behind the same
   interface (`src/lib/security/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
