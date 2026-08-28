@@ -183,9 +183,17 @@ export function AutomationPanel({ initial }: { initial: Payload }) {
                       ))}
                     </div>
 
+                    {/*
+                      The count decides the sentence, not the timestamp. Read
+                      independently the two could disagree — a rule showing
+                      "0 runs · last 2 hours ago" is nonsense, and a stale
+                      lastRunAt with no surviving runs is enough to produce it.
+                    */}
                     <p className="mt-2 text-[12px] text-ink-400">
                       {rule.runCount} run{rule.runCount === 1 ? "" : "s"}
-                      {rule.lastRunAt ? ` · last ${timeAgo(rule.lastRunAt)} ago` : " · never fired"}
+                      {rule.runCount > 0 && rule.lastRunAt
+                        ? ` · last ${timeAgo(rule.lastRunAt)} ago`
+                        : " · never fired"}
                     </p>
                   </div>
 

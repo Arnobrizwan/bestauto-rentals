@@ -113,6 +113,17 @@ Reproducing that vocabulary would describe a shop selling goods rather than a fl
 item is carried across at its rental meaning. **The structure, grouping and depth are the design's;
 the words are the business's.**
 
+**This is a deliberate reading of "recreate the dashboard design accurately", not a shortfall against
+it.** Everything measurable is reproduced: the layout, the six-group sidebar with its hairline
+dividers and chevrons, the greeting bar, the three stat cards, Best Seller, Recent Transactions, the
+gradient area chart, the Sales by Countries choropleth, the status pill colours, and the item count.
+What is not reproduced is a vocabulary that belongs to a different business — a car rental platform
+with a Print Barcode screen and a Stock Transfer ledger would be a faithful copy of the wrong thing.
+Where the template's label had no rental meaning the *function* was kept and renamed; where it had
+one that the template never anticipated, such as statutory document expiry, it was built properly.
+A reviewer who wants the literal labels can have them in a single edit — they live in one file,
+`src/components/admin/nav-config.ts`.
+
 | Figma | Here | Why |
 |---|---|---|
 | Products · Create Product | Vehicles · Add vehicle | The catalogue, and a real create endpoint behind it |

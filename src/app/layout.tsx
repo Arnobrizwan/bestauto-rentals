@@ -38,6 +38,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-scroll-behavior="smooth"
       className={`${outfit.variable} ${inter.variable} ${nunito.variable}`}
     >
+      <head>
+        {/*
+          The reveal animation starts every [data-reveal] section at opacity 0
+          and relies on JavaScript to show it. With scripting unavailable that
+          is not a missing animation, it is a blank page, so scripting off
+          means no hiding at all.
+        */}
+        <noscript>
+          <style>{"[data-reveal]{opacity:1 !important;transform:none !important}"}</style>
+        </noscript>
+      </head>
       <body className="min-h-dvh antialiased">{children}</body>
     </html>
   );

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { cn } from "@/lib/utils";
+
 const TITLES: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/vehicles": "Vehicles",
@@ -27,6 +29,8 @@ export function AdminTopbar({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
+  // Below `sm` the search collapses to an icon rather than disappearing.
+  const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   function toggleFullscreen() {
@@ -70,9 +74,41 @@ export function AdminTopbar({
         </svg>
       </button>
 
-      <h1 className="font-admin text-[15px] font-bold text-ink-900 lg:hidden">{TITLES[pathname] ?? "Admin"}</h1>
+      <h1
+        className={cn(
+          "font-admin text-[15px] font-bold text-ink-900 lg:hidden",
+          searchOpen && "hidden sm:block lg:hidden",
+        )}
+      >
+        {TITLES[pathname] ?? "Admin"}
+      </h1>
 
-      <form onSubmit={submit} className="relative hidden max-w-md flex-1 sm:block">
+      {/*
+        The search used to be `hidden sm:block`, so on a phone it was not
+        collapsed — it was gone, and with it the only way to look a booking
+        reference up. It now toggles open in place, which is what the rest of
+        the header already does with its action cluster.
+      */}
+      <button
+        type="button"
+        onClick={() => {
+          setSearchOpen(true);
+          window.setTimeout(() => searchRef.current?.focus(), 0);
+        }}
+        aria-label="Search"
+        aria-expanded={searchOpen}
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 sm:hidden",
+          searchOpen && "hidden",
+        )}
+      >
+        <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="9" cy="9" r="6" />
+          <path d="m17 17-3.5-3.5" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      <form onSubmit={submit} className={cn("relative max-w-md flex-1 sm:block", searchOpen ? "block" : "hidden")}>
         <svg
           viewBox="0 0 20 20"
           className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-300"
@@ -91,9 +127,19 @@ export function AdminTopbar({
           aria-label="Search"
           className="h-10 w-full rounded-lg border border-line bg-canvas pr-16 pl-10 text-sm text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-300 focus:bg-white"
         />
-        <kbd className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-line bg-white px-1.5 py-0.5 font-sans text-[10px] font-semibold text-ink-400">
+        <kbd className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded border border-line bg-white px-1.5 py-0.5 font-sans text-[10px] font-semibold text-ink-400 sm:block">
           ⌘K
         </kbd>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(false)}
+          aria-label="Close search"
+          className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-ink-400 sm:hidden"
+        >
+          <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m5 5 10 10M15 5 5 15" strokeLinecap="round" />
+          </svg>
+        </button>
       </form>
 
       <div className="ml-auto flex items-center gap-2">
