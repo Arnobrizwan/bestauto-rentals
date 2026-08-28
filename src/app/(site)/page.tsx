@@ -10,7 +10,22 @@ import type { VehicleCardData } from "@/components/site/vehicle-card";
 import { ButtonLink } from "@/components/ui";
 import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 
-export const dynamic = "force-dynamic";
+/**
+ * Rendered once and served from the CDN for five minutes.
+ *
+ * This page was `force-dynamic`, which meant every visitor waited for a round
+ * trip to the function region — and the functions run beside the database in
+ * `iad1` while most of this audience is served from `bom1`, so that round trip
+ * was the page load. Nothing here is per-visitor: it is the fleet, and the
+ * fleet does not change between two people opening the site a second apart.
+ *
+ * Availability shown on a card can therefore be up to five minutes stale, which
+ * is safe because it was never authoritative: `POST /api/bookings` re-checks
+ * availability against overlapping bookings before it accepts anything.
+ * Publishing a vehicle revalidates this path immediately, so an operator does
+ * not wait out the window.
+ */
+export const revalidate = 300;
 
 const TRUST = [
   { value: "11", label: "Branches" },

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/auth/server";
@@ -113,6 +114,13 @@ export async function POST(req: Request) {
   });
 
   if (!created) return fail(409, "A vehicle with that name already exists.");
+
+  // The fleet pages are cached at the edge, so publish has to invalidate them
+  // rather than leaving an operator staring at a page that does not list the
+  // car they just added.
+  revalidatePath("/");
+  revalidatePath("/cars");
+  revalidatePath(`/cars/${created.slug}`);
 
   log.info("vehicle.created", { slug: created.slug });
   return ok({ vehicle: { slug: created.slug, name: created.name } });

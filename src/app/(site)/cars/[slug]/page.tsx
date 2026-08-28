@@ -9,7 +9,22 @@ import { Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { getVehicleBySlug, listFacets, listVehicles } from "@/server/repositories/vehicles";
 
-export const dynamic = "force-dynamic";
+/**
+ * Prerendered per vehicle and revalidated every five minutes.
+ *
+ * There are twelve models and no per-visitor content on the page, so serving
+ * this from the edge rather than rendering it in `iad1` on every request
+ * removes an intercontinental round trip from the most-visited page after the
+ * home page. The booking form is a client component and still prices against
+ * the live server on submit.
+ */
+export const revalidate = 300;
+
+/** Prebuild all twelve at deploy time; anything new renders on first request. */
+export async function generateStaticParams() {
+  const { items } = await listVehicles({ limit: 100 });
+  return items.map((v) => ({ slug: v.slug }));
+}
 
 type Params = Promise<{ slug: string }>;
 

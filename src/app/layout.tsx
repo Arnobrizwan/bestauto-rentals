@@ -31,7 +31,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB" className={`${outfit.variable} ${inter.variable} ${nunito.variable}`}>
+    <html
+      lang="en-BD"
+      // globals.css sets scroll-behavior: smooth; declaring it here lets Next
+      // suppress it during route transitions instead of animating every jump.
+      data-scroll-behavior="smooth"
+      className={`${outfit.variable} ${inter.variable} ${nunito.variable}`}
+    >
       <body className="min-h-dvh antialiased">{children}</body>
     </html>
   );
