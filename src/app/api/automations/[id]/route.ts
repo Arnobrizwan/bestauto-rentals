@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const unauthorised = await requireAdmin({ role: "admin" });
   if (unauthorised) return unauthorised;
 
-  const blocked = guard(req, "automations-patch", 40);
+  const blocked = await guard(req, "automations-patch", 40);
   if (blocked) return blocked;
 
   const body = await readJson(req, schema);

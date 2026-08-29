@@ -26,7 +26,7 @@ const patchSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const blocked = guard(req, "leads-list", 120);
+  const blocked = await guard(req, "leads-list", 120);
   if (blocked) return blocked;
   const params = Object.fromEntries(new URL(req.url).searchParams);
   return ok(
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const blocked = guard(req, "leads-create", 8);
+  const blocked = await guard(req, "leads-create", 8);
   if (blocked) return blocked;
 
   const body = await readJson(req, createSchema);
@@ -73,7 +73,7 @@ export async function PATCH(req: Request) {
   const unauthorised = await requireAdmin({ role: "admin" });
   if (unauthorised) return unauthorised;
 
-  const blocked = guard(req, "leads-patch", 60);
+  const blocked = await guard(req, "leads-patch", 60);
   if (blocked) return blocked;
 
   const body = await readJson(req, patchSchema);

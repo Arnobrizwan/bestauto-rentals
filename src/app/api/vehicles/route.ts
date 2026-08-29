@@ -25,7 +25,7 @@ const query = z.object({
 });
 
 export async function GET(req: Request) {
-  const blocked = guard(req, "vehicles", 120);
+  const blocked = await guard(req, "vehicles", 120);
   if (blocked) return blocked;
 
   const parsed = query.safeParse(Object.fromEntries(new URL(req.url).searchParams));
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   const blocked = await requireAdmin({ role: "admin" });
   if (blocked) return blocked;
 
-  const limited = guard(req, "vehicles-create", 20, 15 * 60_000);
+  const limited = await guard(req, "vehicles-create", 20, 15 * 60_000);
   if (limited) return limited;
 
   const body = await readJson(req, createSchema, 8_000);

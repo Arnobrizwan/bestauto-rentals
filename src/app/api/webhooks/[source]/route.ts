@@ -45,7 +45,7 @@ async function verify(source: string, req: Request, raw: string) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ source: string }> }) {
-  const blocked = guard(req, "webhooks", 60);
+  const blocked = await guard(req, "webhooks", 60);
   if (blocked) return blocked;
 
   const { source } = await params;

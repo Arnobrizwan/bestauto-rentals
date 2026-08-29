@@ -35,7 +35,7 @@ const listSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const blocked = guard(req, "bookings-list", 120);
+  const blocked = await guard(req, "bookings-list", 120);
   if (blocked) return blocked;
 
   const parsed = listSchema.safeParse(Object.fromEntries(new URL(req.url).searchParams));
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const blocked = guard(req, "bookings-create", 10);
+  const blocked = await guard(req, "bookings-create", 10);
   if (blocked) return blocked;
 
   const body = await readJson(req, createSchema);

@@ -21,7 +21,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   // Deliberately tight: five attempts per quarter hour per client.
-  const blocked = guard(req, "auth-login", 5, 15 * 60_000);
+  const blocked = await guard(req, "auth-login", 5, 15 * 60_000);
   if (blocked) return blocked;
 
   const body = await readJson(req, schema, 4_000);

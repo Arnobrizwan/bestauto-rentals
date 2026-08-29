@@ -21,7 +21,7 @@ const schema = z.object({
  * the same refusal wording the booking would, so the two never disagree.
  */
 export async function POST(req: Request) {
-  const blocked = guard(req, "coupon-validate", 30);
+  const blocked = await guard(req, "coupon-validate", 30);
   if (blocked) return blocked;
 
   const body = await readJson(req, schema, 2_000);

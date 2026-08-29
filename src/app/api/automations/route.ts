@@ -4,7 +4,7 @@ import { automationStats, listEvents, listOutbox, listRules, listRuns } from "@/
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const blocked = guard(req, "automations", 90);
+  const blocked = await guard(req, "automations", 90);
   if (blocked) return blocked;
 
   const [rules, runs, events, outbox, stats] = await Promise.all([

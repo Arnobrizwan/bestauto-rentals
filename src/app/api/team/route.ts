@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const blocked = await requireAdmin({ role: "admin" });
   if (blocked) return blocked;
 
-  const limited = guard(req, "team-create", 10, 15 * 60_000);
+  const limited = await guard(req, "team-create", 10, 15 * 60_000);
   if (limited) return limited;
 
   const body = await readJson(req, createSchema, 4_000);

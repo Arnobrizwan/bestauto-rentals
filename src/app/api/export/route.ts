@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   const blocked = await requireAdmin();
   if (blocked) return blocked;
 
-  const limited = guard(req, "export", 20);
+  const limited = await guard(req, "export", 20);
   if (limited) return limited;
 
   const params = new URL(req.url).searchParams;

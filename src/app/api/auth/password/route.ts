@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const me = await getCurrentAdmin();
   if (!me) return fail(401, "Authentication required.");
 
-  const limited = guard(req, "password-change", 5, 15 * 60_000);
+  const limited = await guard(req, "password-change", 5, 15 * 60_000);
   if (limited) return limited;
 
   const body = await readJson(req, schema, 4_000);

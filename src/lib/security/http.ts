@@ -52,12 +52,30 @@ export async function readJson<T extends z.ZodType>(
   return { ok: true, data: parsed.data };
 }
 
-export function guard(req: Request, scope: string, limit: number, windowMs = 60_000) {
-  const result = rateLimit(clientKey(req, scope), limit, windowMs);
-  if (!result.allowed) {
-    log.warn("rate_limit.blocked", { scope });
+/**
+ * Two-tier rate limiting.
+ *
+ * The in-process window runs first: it is free, and a client already over the
+ * limit on this instance needs no further discussion. Everything that gets
+ * past it is counted against a shared row, because an in-memory limiter on a
+ * serverless host is really "the limit, times however many instances are
+ * warm", which is not a limit at all.
+ */
+export async function guard(req: Request, scope: string, limit: number, windowMs = 60_000) {
+  const key = clientKey(req, scope);
+
+  if (!rateLimit(key, limit, windowMs).allowed) {
+    log.warn("rate_limit.blocked", { scope, tier: "instance" });
     return fail(429, "Too many requests. Please slow down.");
   }
+
+  const { consumeSharedLimit } = await import("@/server/repositories/rate-limit");
+  const shared = await consumeSharedLimit(key, limit, windowMs);
+  if (!shared.allowed) {
+    log.warn("rate_limit.blocked", { scope, tier: "shared" });
+    return fail(429, "Too many requests. Please slow down.");
+  }
+
   return null;
 }
 

@@ -383,6 +383,21 @@ export type AutomationRun = typeof automationRuns.$inferSelect;
 export type AppEvent = typeof events.$inferSelect;
 export type OutboxMessage = typeof outbox.$inferSelect;
 /**
+ * Shared fixed-window rate limiting.
+ *
+ * The in-process limiter is fast and free but sees only its own instance, so
+ * on a serverless host the effective limit was the configured one multiplied
+ * by however many instances happened to be warm — which is not a limit. This
+ * row is the shared authority; the in-memory check stays in front of it as a
+ * cheap short-circuit for a client already known to be over.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});
+
+/**
  * Daily spend ledger for the hosted AI provider.
  *
  * The concierge is on a public URL with a live key. Per-client rate limiting

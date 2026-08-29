@@ -587,8 +587,14 @@ Worth stating plainly rather than leaving to be discovered:
   delivery provider, and an admin resetting it from Team & roles is the honest substitute until one
   exists. Staff accounts are created from the dashboard, with the starting password typed by the
   inviting admin and handed over directly for the same reason.
-- **Rate limiting is in-process.** Fine for a single region; multi-region needs Redis behind the same
-  interface (`src/lib/security/rate-limit.ts`).
+- **Rate limiting counts a shared window, with an in-process one in front.** The in-memory limiter
+  alone meant the effective limit was the configured number multiplied by however many serverless
+  instances happened to be warm, which is not a limit. Hits that survive the local check are counted
+  against a `rate_limits` row whose increment and window reset are a single statement, so two
+  instances arriving together cannot both read a stale count. It fails open: a limiter that fails
+  closed turns a database blip into a total outage, and the per-instance window is still in front of
+  it. Swapping the shared tier for Redis is a change behind one function
+  (`src/server/repositories/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
 - **Email and SMS queue to an outbox.** Delivery is a config change, not a code change.
 - **The concierge is not streamed.** Responses arrive whole. Streaming is a route change; the

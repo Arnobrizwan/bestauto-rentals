@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * bookings table — there are no stored rollups to drift out of date.
  */
 export async function GET(req: Request) {
-  const blocked = guard(req, "analytics", 120);
+  const blocked = await guard(req, "analytics", 120);
   if (blocked) return blocked;
 
   const params = new URL(req.url).searchParams;

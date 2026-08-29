@@ -19,7 +19,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const blocked = guard(req, "ai-recommend", 30);
+  const blocked = await guard(req, "ai-recommend", 30);
   if (blocked) return blocked;
 
   const body = await readJson(req, schema);

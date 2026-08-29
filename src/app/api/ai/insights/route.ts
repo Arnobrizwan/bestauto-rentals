@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 45;
 
 export async function GET(req: Request) {
-  const blocked = guard(req, "ai-insights", 30);
+  const blocked = await guard(req, "ai-insights", 30);
   if (blocked) return blocked;
 
   const params = new URL(req.url).searchParams;

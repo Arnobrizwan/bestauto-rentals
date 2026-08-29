@@ -28,7 +28,7 @@ const schema = z.object({
  * accounts are created by an existing admin, not through a public endpoint.
  */
 export async function POST(req: Request) {
-  const blocked = guard(req, "auth-setup", 5, 15 * 60_000);
+  const blocked = await guard(req, "auth-setup", 5, 15 * 60_000);
   if (blocked) return blocked;
 
   if ((await countAdmins()) > 0) {

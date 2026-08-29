@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   const forbidden = await requireAdmin({ role: "admin" });
   if (forbidden) return forbidden;
 
-  const blocked = guard(req, "cron-manual", 10);
+  const blocked = await guard(req, "cron-manual", 10);
   if (blocked) return blocked;
   return run();
 }
