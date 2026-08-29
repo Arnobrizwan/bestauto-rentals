@@ -154,10 +154,21 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-line bg-white p-6 shadow-card">
+      {/*
+        The headline is the total, not the daily rate.
+        It used to show the per-day price, which is correct but static: ticking
+        an extra changed nothing about the largest number on the card while the
+        figure that did move sat below the fold, so the form read as though the
+        extras were not being counted. The daily rate keeps its place on the
+        line underneath, where it explains the total rather than competing with
+        it.
+      */}
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-display text-3xl font-bold text-ink-900">
-          {formatCurrency(pricePerDay)}
-          <span className="text-sm font-medium text-ink-400"> / day with driver</span>
+          {formatCurrency(days > 0 ? totals.total : pricePerDay)}
+          <span className="text-sm font-medium text-ink-400">
+            {days > 0 ? ` total · ${days} ${days === 1 ? "day" : "days"}` : " / day with driver"}
+          </span>
         </p>
         {totals.rate > 0 && (
           <span className="rounded-md bg-success-soft px-2 py-1 text-[12px] font-bold text-success">
@@ -165,6 +176,13 @@ export function BookingForm({ slug, name, pricePerDay, locations, defaultLocatio
           </span>
         )}
       </div>
+
+      {days > 0 && (
+        <p className="mt-1 text-[13px] text-ink-400">
+          {formatCurrency(pricePerDay)} a day with a driver
+          {totals.extrasTotal > 0 && <> · {formatCurrency(totals.extrasTotal)} of extras</>}
+        </p>
+      )}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label>
