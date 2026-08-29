@@ -47,11 +47,6 @@ export default function PrivacyPage() {
       <h1 className="font-display text-[34px] leading-tight font-bold tracking-tight text-ink-900 uppercase sm:text-[44px]">
         Privacy policy
       </h1>
-      <p className="mt-5 text-[16px] leading-relaxed text-ink-400">
-        What Best Auto stores when you book a car, send an enquiry or talk to the assistant, why it is stored, and who
-        sees it. Written in plain terms rather than legal ones.
-      </p>
-
       <div className="mt-12 space-y-9">
         {SECTIONS.map((section) => (
           <article key={section.title} className="border-t border-line pt-7">

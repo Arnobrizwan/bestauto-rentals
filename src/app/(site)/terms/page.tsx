@@ -22,12 +22,6 @@ export default function TermsPage() {
       <h1 className="font-display text-[34px] leading-tight font-bold tracking-tight text-ink-900 uppercase sm:text-[44px]">
         Rental terms &amp; conditions
       </h1>
-      <p className="mt-5 text-[16px] leading-relaxed text-ink-400">
-        These are the terms a Best Auto hire runs on. They are the same rules the booking assistant answers from — ask it
-        anything here and you will get this, not a paraphrase. Prices are in Bangladeshi taka and include the chauffeur
-        unless a booking says otherwise.
-      </p>
-
       <div className="mt-12 space-y-9">
         {KNOWLEDGE.map((entry) => (
           <article key={entry.topic} id={entry.topic} className="scroll-mt-24 border-t border-line pt-7">

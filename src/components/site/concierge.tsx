@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { cn, formatCurrency } from "@/lib/utils";
 
-type VehicleChip = { slug: string; name: string; pricePerDay: number; seats: number; transmission: string };
+type VehicleChip = {
+  slug: string;
+  name: string;
+  pricePerDay: number;
+  seats: number;
+  transmission: string;
+};
 
 type Message = {
   id: string;
@@ -13,10 +19,16 @@ type Message = {
   content: string;
   vehicles?: VehicleChip[];
   suggestions?: string[];
-  engine?: { engine: string; model: string; hosted: boolean };
-  latencyMs?: number;
-  tools?: string[];
-  leadCaptured?: { tier: string; score: number };
+  /*
+   * Deliberately no engine, latency, tool names or lead score.
+   *
+   * All four were rendered under the assistant's answers, and all four are
+   * operations detail wearing a customer's clothes: a `search_vehicles` chip
+   * means nothing to someone booking a car, and "scored 42/100 (cold)" tells
+   * them how the sales team ranks them. The server still returns and stores
+   * every one of them — the admin AI console is where they belong.
+   */
+  leadCaptured?: boolean;
 };
 
 const OPENER: Message = {
@@ -53,10 +65,11 @@ function newSessionId() {
 /**
  * Floating AI concierge.
  *
- * The transcript is sent whole on each turn so the server stays stateless; the
- * server persists it for the admin AI console. Every answer reports which
- * engine produced it and which tools it called, so the behaviour is auditable
- * from the customer side too.
+ * Only the new turn is sent each turn; the server reads history back from the
+ * database and persists the transcript for the admin AI console. Which engine
+ * answered, how long it took, which tools it called and how a lead scored are
+ * all recorded there — none of it is shown here, because none of it is the
+ * customer's business.
  */
 export function Concierge() {
   const [open, setOpen] = useState(false);
@@ -77,7 +90,10 @@ export function Concierge() {
 
   useEffect(() => {
     if (!open) return;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages, open, busy]);
 
   useEffect(() => {
@@ -105,7 +121,11 @@ export function Concierge() {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
 
-    const userMessage: Message = { id: `u_${nextId()}`, role: "user", content: trimmed };
+    const userMessage: Message = {
+      id: `u_${nextId()}`,
+      role: "user",
+      content: trimmed,
+    };
     const history = [...messages, userMessage];
     setMessages(history);
     setInput("");
@@ -119,7 +139,10 @@ export function Concierge() {
         // Only the new turn. The server reads the conversation back from the
         // database by session, so it is not the browser's job to say what was
         // already said.
-        body: JSON.stringify({ sessionId: sessionRef.current, message: trimmed }),
+        body: JSON.stringify({
+          sessionId: sessionRef.current,
+          message: trimmed,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -132,10 +155,15 @@ export function Concierge() {
 
       // The assistant bubble appears empty and fills as the words arrive.
       const replyId = `a_${nextId()}`;
-      setMessages((prev) => [...prev, { id: replyId, role: "assistant", content: "" }]);
+      setMessages((prev) => [
+        ...prev,
+        { id: replyId, role: "assistant", content: "" },
+      ]);
 
       const patch = (change: Partial<Message>) =>
-        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, ...change } : m)));
+        setMessages((prev) =>
+          prev.map((m) => (m.id === replyId ? { ...m, ...change } : m)),
+        );
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -163,9 +191,8 @@ export function Concierge() {
             message?: string;
             vehicles?: VehicleChip[];
             suggestions?: string[];
-            engine?: Message["engine"];
-            latencyMs?: number;
-            toolCalls?: { name: string }[];
+            // The wire still carries engine, latency and tool calls — the
+            // server records them for the admin console. None are read here.
             leadCaptured?: { tier: string; score: number };
           };
           try {
@@ -183,16 +210,15 @@ export function Concierge() {
             streamed = "";
             patch({ content: "" });
           } else if (payload.type === "error") {
-            throw new Error(payload.error ?? "The assistant is unavailable right now.");
+            throw new Error(
+              payload.error ?? "The assistant is unavailable right now.",
+            );
           } else if (payload.type === "done") {
             patch({
               content: payload.message ?? streamed,
               vehicles: payload.vehicles,
               suggestions: payload.suggestions,
-              engine: payload.engine,
-              latencyMs: payload.latencyMs,
-              tools: payload.toolCalls?.map((t) => t.name),
-              leadCaptured: payload.leadCaptured,
+              leadCaptured: Boolean(payload.leadCaptured),
             });
           }
         }
@@ -202,7 +228,9 @@ export function Concierge() {
     } catch (err) {
       // Drop a bubble that never received any words, so a failure does not
       // leave an empty assistant message sitting in the transcript.
-      setMessages((prev) => prev.filter((m) => !(m.role === "assistant" && m.content === "")));
+      setMessages((prev) =>
+        prev.filter((m) => !(m.role === "assistant" && m.content === "")),
+      );
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setBusy(false);
@@ -210,7 +238,8 @@ export function Concierge() {
   }
 
   const last = messages[messages.length - 1];
-  const suggestions = !busy && last?.role === "assistant" ? (last.suggestions ?? []) : [];
+  const suggestions =
+    !busy && last?.role === "assistant" ? (last.suggestions ?? []) : [];
 
   return (
     <>
@@ -219,23 +248,48 @@ export function Concierge() {
         onClick={togglePanel}
         aria-expanded={open}
         aria-controls="concierge-panel"
-        aria-label={open ? "Close the booking assistant" : "Open the booking assistant"}
+        aria-label={
+          open ? "Close the booking assistant" : "Open the booking assistant"
+        }
         className={cn(
           "fixed right-4 bottom-4 z-60 grid size-14 place-items-center rounded-full text-white shadow-pop transition-all duration-300 sm:right-6 sm:bottom-6",
-          open ? "rotate-90 bg-ink-900" : "bg-brand-400 hover:scale-105 hover:bg-brand-500",
+          open
+            ? "rotate-90 bg-ink-900"
+            : "bg-brand-400 hover:scale-105 hover:bg-brand-500",
         )}
       >
         {open ? (
-          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
           </svg>
         ) : (
-          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.4 9.4 0 0 1-2.9-.4L4 21l1.4-4.1A8.2 8.2 0 0 1 3.6 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.4 8.4Z" strokeLinejoin="round" />
-            <path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" strokeLinecap="round" strokeWidth="2.4" />
+          <svg
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          >
+            <path
+              d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.4 9.4 0 0 1-2.9-.4L4 21l1.4-4.1A8.2 8.2 0 0 1 3.6 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.4 8.4Z"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"
+              strokeLinecap="round"
+              strokeWidth="2.4"
+            />
           </svg>
         )}
-        {unread && !open && <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-danger" />}
+        {unread && !open && (
+          <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-danger" />
+        )}
       </button>
 
       <div
@@ -252,13 +306,24 @@ export function Concierge() {
       >
         <header className="flex items-center gap-3 border-b border-line bg-ink-900 px-4 py-3.5 text-white">
           <span className="relative grid size-9 place-items-center rounded-full bg-brand-400">
-            <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
               <path d="M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
-              <path d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15" strokeLinecap="round" />
+              <path
+                d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15"
+                strokeLinecap="round"
+              />
             </svg>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-sm font-semibold">Booking assistant</p>
+            <p className="font-display text-sm font-semibold">
+              Booking assistant
+            </p>
             {/*
               Says what the assistant does, never which model is doing it. This
               line rendered the raw model id — "qwen-plus" — to customers as
@@ -280,16 +345,36 @@ export function Concierge() {
             aria-label="Close"
             className="grid size-8 place-items-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
           >
-            <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
             </svg>
           </button>
         </header>
 
-        <div ref={scrollRef} className="scroll-slim flex-1 space-y-4 overflow-y-auto bg-canvas px-4 py-4">
+        <div
+          ref={scrollRef}
+          className="scroll-slim flex-1 space-y-4 overflow-y-auto bg-canvas px-4 py-4"
+        >
           {messages.map((message) => (
-            <div key={message.id} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[86%] space-y-2", message.role === "user" && "items-end")}>
+            <div
+              key={message.id}
+              className={cn(
+                "flex",
+                message.role === "user" ? "justify-end" : "justify-start",
+              )}
+            >
+              <div
+                className={cn(
+                  "max-w-[86%] space-y-2",
+                  message.role === "user" && "items-end",
+                )}
+              >
                 <div
                   className={cn(
                     "rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed whitespace-pre-line",
@@ -310,7 +395,9 @@ export function Concierge() {
                         className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-3 py-2.5 transition-all hover:border-brand-400 hover:shadow-card"
                       >
                         <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold text-ink-900">{v.name}</span>
+                          <span className="block truncate text-[13px] font-semibold text-ink-900">
+                            {v.name}
+                          </span>
                           <span className="block text-[11px] text-ink-400">
                             {v.seats} seats · {v.transmission}
                           </span>
@@ -325,18 +412,7 @@ export function Concierge() {
 
                 {message.leadCaptured && (
                   <p className="rounded-lg bg-success-soft px-3 py-2 text-[12px] font-medium text-success">
-                    Passed to the team · scored {message.leadCaptured.score}/100 ({message.leadCaptured.tier})
-                  </p>
-                )}
-
-                {message.role === "assistant" && message.tools && message.tools.length > 0 && (
-                  <p className="flex flex-wrap gap-1 text-[10px] text-ink-300">
-                    {message.tools.map((tool, i) => (
-                      <span key={`${tool}-${i}`} className="rounded bg-ink-50 px-1.5 py-0.5 font-mono">
-                        {tool}
-                      </span>
-                    ))}
-                    {message.latencyMs !== undefined && <span className="px-1 py-0.5">{message.latencyMs}ms</span>}
+                    Passed to our booking team — they will be in touch shortly.
                   </p>
                 )}
               </div>
@@ -358,7 +434,10 @@ export function Concierge() {
           )}
 
           {error && (
-            <p role="alert" className="rounded-xl bg-danger-soft px-3.5 py-2.5 text-[13px] font-medium text-danger">
+            <p
+              role="alert"
+              className="rounded-xl bg-danger-soft px-3.5 py-2.5 text-[13px] font-medium text-danger"
+            >
               {error}
             </p>
           )}
@@ -401,8 +480,18 @@ export function Concierge() {
             aria-label="Send"
             className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-400 text-white transition-colors hover:bg-brand-500 disabled:opacity-40"
           >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M4.5 12h15m0 0-6-6m6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              viewBox="0 0 24 24"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <path
+                d="M4.5 12h15m0 0-6-6m6 6-6 6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </form>
