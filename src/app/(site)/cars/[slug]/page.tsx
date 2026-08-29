@@ -20,10 +20,22 @@ import { getVehicleBySlug, listFacets, listVehicles } from "@/server/repositorie
  */
 export const revalidate = 300;
 
-/** Prebuild all twelve at deploy time; anything new renders on first request. */
+/**
+ * Prebuild all twelve at deploy time; anything new renders on first request.
+ *
+ * An empty list is a valid answer, not a failure: it means nothing is
+ * prerendered and every page is built on first request and then cached, which
+ * costs one slow visit. Letting a database blip throw here instead would fail
+ * the whole deployment — belt and braces alongside the client's retry, because
+ * a deploy that cannot ship is worse than a page that is briefly slow.
+ */
 export async function generateStaticParams() {
-  const { items } = await listVehicles({ limit: 100 });
-  return items.map((v) => ({ slug: v.slug }));
+  try {
+    const { items } = await listVehicles({ limit: 100 });
+    return items.map((v) => ({ slug: v.slug }));
+  } catch {
+    return [];
+  }
 }
 
 type Params = Promise<{ slug: string }>;

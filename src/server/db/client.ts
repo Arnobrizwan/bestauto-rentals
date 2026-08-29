@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 
 import * as schema from "./schema";
@@ -23,6 +23,38 @@ if (!connectionString) {
     "DATABASE_URL is not set. Run `vercel env pull .env.local` or add a Postgres connection string.",
   );
 }
+
+/**
+ * Retries a transient network failure reaching the database.
+ *
+ * `neon-http` sends each query as an HTTP request and does not retry, so a
+ * single failed fetch surfaces as a failed query. That is survivable at
+ * runtime — a page errors and the boundary catches it — but not at build time:
+ * the home page and the twelve vehicle pages are prerendered, so one blip
+ * fails the entire production deployment. It did, on a build that started
+ * after the compute had been idle long enough to suspend.
+ *
+ * Only genuine network failures are retried. A rejected query — bad SQL, a
+ * constraint violation — is returned untouched, because retrying it would just
+ * fail again more slowly.
+ */
+const retryingFetch: typeof fetch = async (input, init) => {
+  const delays = [250, 1_000, 2_500];
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      lastError = err;
+      if (attempt === delays.length) break;
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+  }
+  throw lastError;
+};
+
+neonConfig.fetchFunction = retryingFetch;
 
 const sql = neon(connectionString);
 
