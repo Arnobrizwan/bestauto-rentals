@@ -41,4 +41,4 @@ export const OPS_ANALYST_SYSTEM_V1 = `You are a revenue analyst for a Bangladesh
 You are given real aggregate metrics. Write 3 to 4 observations a general manager would act on this week. Each must cite a number from the data. Do not speculate beyond the numbers, do not repeat the same metric twice, and do not give generic advice.
 
 Return JSON only:
-{"insights":[{"title":"<=6 words","detail":"one or two sentences citing a figure","severity":"positive|neutral|warning","metric":"the figure you cited"}]}`;
+{"insights":[{"title":"<=6 words","detail":"one or two sentences citing a figure","severity":"positive|neutral|warning","metric":"a short display string including its unit, max 24 characters, e.g. '+53.6% revenue' or '4% utilisation' — never a bare number, never more than one decimal place"}]}`;

@@ -1,9 +1,11 @@
+import { z } from "zod";
 import { describeEngine, resolveProviderForRequest, type EngineInfo } from "@/ai/provider";
 import { LEAD_QUALIFIER_SYSTEM_V2 } from "@/ai/prompts";
 
 import { formatCurrency } from "@/lib/utils";
 
 import { stripFences } from "./recommender";
+import { clampScore } from "@/ai/validation";
 
 export type LeadInput = {
   name: string;
@@ -181,6 +183,22 @@ export function rulesQualify(lead: LeadInput): Omit<LeadScore, "engine" | "laten
 
 /* --------------------------------------------------------------- the agent */
 
+/**
+ * What the qualifier is allowed to return.
+ *
+ * `tier` is accepted but ignored — it is recomputed from the score — so a
+ * model that contradicts itself cannot produce a hot lead scoring 12.
+ */
+const qualifierResponseSchema = z.object({
+  score: z.union([z.number(), z.string()]),
+  tier: z.string().optional(),
+  summary: z.string().max(600).optional().default(""),
+  signals: z
+    .array(z.object({ label: z.string().max(80), impact: z.number(), detail: z.string().max(200) }))
+    .optional(),
+  nextAction: z.string().max(240).optional().default(""),
+});
+
 export async function qualifyLead(lead: LeadInput): Promise<LeadScore> {
   const started = Date.now();
   const baseline = rulesQualify(lead);
@@ -219,21 +237,21 @@ export async function qualifyLead(lead: LeadInput): Promise<LeadScore> {
       ],
     });
 
-    const parsed = JSON.parse(stripFences(res.text)) as {
-      score: number;
-      tier?: string;
-      summary: string;
-      signals?: LeadSignal[];
-      nextAction: string;
-    };
+    const parsed = qualifierResponseSchema.safeParse(JSON.parse(stripFences(res.text)));
+    if (!parsed.success) {
+      throw new Error(`Model response failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
+    }
 
-    const score = Math.max(0, Math.min(100, Math.round(parsed.score)));
+    // The tier is never taken from the model. It is derived from the clamped
+    // score by the same function the rules engine uses, so the two can never
+    // disagree with each other or with the bands documented in the prompt.
+    const score = clampScore(parsed.data.score) ?? baseline.score;
     return {
       score,
       tier: tierOf(score),
-      summary: parsed.summary || baseline.summary,
-      signals: (parsed.signals?.length ? parsed.signals : baseline.signals).slice(0, 8),
-      nextAction: parsed.nextAction || baseline.nextAction,
+      summary: parsed.data.summary || baseline.summary,
+      signals: (parsed.data.signals?.length ? parsed.data.signals : baseline.signals).slice(0, 8),
+      nextAction: parsed.data.nextAction || baseline.nextAction,
       engine: describeEngine(provider),
       latencyMs: Date.now() - started,
     };

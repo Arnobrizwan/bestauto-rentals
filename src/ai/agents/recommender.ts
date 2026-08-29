@@ -1,7 +1,9 @@
+import { z } from "zod";
 import { describeEngine, resolveProviderForRequest, type EngineInfo } from "@/ai/provider";
 import { RECOMMENDER_SYSTEM_V2 } from "@/ai/prompts";
 import { formatCurrency } from "@/lib/utils";
 import { listVehicles, type VehicleWithStats } from "@/server/repositories/vehicles";
+import { clampScore } from "@/ai/validation";
 
 export type RecommendBrief = {
   /** Free-text description of the trip, e.g. "week in the Highlands with three kids" */
@@ -375,6 +377,23 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
 
 /* --------------------------------------------------------------- the agent */
 
+/** What the recommender is allowed to return. */
+const recommenderResponseSchema = z.object({
+  picks: z
+    .array(
+      z.object({
+        slug: z.string().min(1).max(120),
+        rank: z.union([z.number(), z.string()]).optional(),
+        headline: z.string().max(120).optional().default(""),
+        reason: z.string().max(400).optional().default(""),
+        tradeoff: z.string().max(300).optional().default(""),
+        fitScore: z.union([z.number(), z.string()]).optional(),
+      }),
+    )
+    .min(1),
+  summary: z.string().max(600).optional().default(""),
+});
+
 export async function recommendVehicles(brief: RecommendBrief): Promise<RecommendResult> {
   const started = Date.now();
   const { items: pool } = await listVehicles({ limit: 40 });
@@ -426,13 +445,15 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
       ],
     });
 
-    const parsed = JSON.parse(stripFences(res.text)) as {
-      picks: { slug: string; rank: number; headline: string; reason: string; fitScore: number; tradeoff?: string }[];
-      summary: string;
-    };
+    const parsed = recommenderResponseSchema.safeParse(JSON.parse(stripFences(res.text)));
+    if (!parsed.success) {
+      throw new Error(`Model response failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
+    }
 
+    // A pick naming a vehicle that was never offered is discarded below, so
+    // the model cannot invent a car that is not in the fleet.
     const bySlug = new Map(pool.map((v) => [v.slug, v]));
-    const picks: Recommendation[] = parsed.picks
+    const picks: Recommendation[] = parsed.data.picks
       .filter((p) => {
         const v = bySlug.get(p.slug);
         if (!v) return false;
@@ -452,7 +473,9 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
           headline: p.headline?.slice(0, 60) ?? "",
           reason: p.reason ?? "",
           tradeoff: p.tradeoff ?? "",
-          fitScore: Math.max(1, Math.min(100, Math.round(p.fitScore ?? 60))),
+          // Clamped rather than trusted: a model that returns 9.7, "80" or
+          // nothing at all still produces an integer the bar chart can draw.
+          fitScore: clampScore(p.fitScore, 0, 100) ?? 60,
           pricePerDay: Number(v.pricePerDay),
           imageUrl: v.imageUrl,
           seats: v.seats,
@@ -468,7 +491,7 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
 
     return {
       picks,
-      summary: parsed.summary || baseline.summary,
+      summary: parsed.data.summary || baseline.summary,
       engine: describeEngine(provider),
       latencyMs: Date.now() - started,
     };
