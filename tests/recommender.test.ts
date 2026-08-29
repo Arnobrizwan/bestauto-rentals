@@ -18,7 +18,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { meetsHardConstraints, resolveBrief } from "../src/ai/agents/recommender";
+import { meetsHardConstraints, resolveBrief, rulesRecommend } from "../src/ai/agents/recommender";
 
 const car = (seats: number, transmission: string, fuel: string) => ({ seats, transmission, fuel });
 
@@ -79,5 +79,41 @@ describe("a car that fails a hard constraint is not a worse answer, it is the wr
   it("constrains nothing when the brief says nothing", () => {
     const brief = resolveBrief({ brief: "a car for the weekend" });
     assert.equal(meetsHardConstraints(car(2, "Manual", "Petrol"), brief), true);
+  });
+});
+
+/**
+ * When the fleet cannot satisfy the party, the answer still has to be the best
+ * one available — and it has to say so.
+ *
+ * The hard filter falls back to the unfiltered pool when nothing qualifies,
+ * which is right: answering "12 of us" with nothing is worse than answering it
+ * with a caveat. But the seat penalty was flat, so an eleven-seater one seat
+ * short scored the same as a five-seater seven short and price broke the tie —
+ * live, "12 of us need transport" returned three five-seaters under the summary
+ * "Matched on 12 people", which is the answer contradicting itself.
+ */
+describe("when nothing fits, the closest still leads and the summary admits it", () => {
+  const fleet = [
+    { slug: "hiace", name: "Toyota Hiace Microbus", seats: 11, bags: 8, transmission: "Manual", fuel: "Diesel", pricePerDay: "8000", costPerDay: "3100", rating: 4.5, segment: "large", bodyType: "Microbus", location: "Dhaka Motijheel", imageUrl: "", features: [], year: 2023, bookingCount: 3, revenue: 0, unitsFree: 4 },
+    { slug: "corolla", name: "Toyota Corolla", seats: 5, bags: 3, transmission: "Automatic", fuel: "Octane", pricePerDay: "4000", costPerDay: "1600", rating: 4.7, segment: "small", bodyType: "Sedan", location: "Dhaka Gulshan", imageUrl: "", features: [], year: 2023, bookingCount: 9, revenue: 0, unitsFree: 6 },
+    { slug: "vezel", name: "Honda Vezel", seats: 5, bags: 4, transmission: "Automatic", fuel: "Hybrid", pricePerDay: "6500", costPerDay: "2500", rating: 4.8, segment: "small", bodyType: "SUV", location: "Dhaka Gulshan", imageUrl: "", features: [], year: 2022, bookingCount: 7, revenue: 0, unitsFree: 3 },
+  ] as never;
+
+  it("leads with the largest vehicle when the party exceeds every car", async () => {
+    const { picks } = await rulesRecommend({ brief: "12 of us need transport" }, fleet);
+    assert.equal(picks[0]?.slug, "hiace", "the eleven-seater is one seat short; the others are seven");
+  });
+
+  it("does not claim a match it did not make", async () => {
+    const { summary } = await rulesRecommend({ brief: "12 of us need transport" }, fleet);
+    assert.ok(!/^Matched on/.test(summary), `summary should not claim a match, got: ${summary}`);
+    assert.match(summary, /seats 12 on its own/);
+  });
+
+  it("still claims the match when one is genuinely made", async () => {
+    const { summary, picks } = await rulesRecommend({ brief: "four of us going to Sylhet" }, fleet);
+    assert.match(summary, /^Matched on/);
+    assert.ok((picks[0]?.seats ?? 0) >= 4);
   });
 });

@@ -151,7 +151,13 @@ function scoreVehicle(v: VehicleWithStats, brief: Required<Pick<RecommendBrief, 
       if (v.seats - brief.passengers <= 1) positives.push(`seats ${v.seats} without wasting space on empty chairs`);
       else positives.push(`seats ${v.seats}`);
     } else {
-      score -= 60;
+      // Scaled by the shortfall, not flat. When nothing in the fleet is big
+      // enough, the hard filter falls back to the whole pool and this score is
+      // all that orders it — and a flat penalty made an eleven-seater one seat
+      // short rank identically to a five-seater seven short, so price and
+      // rating broke the tie and "12 of us" was answered with three
+      // five-seaters. The closest vehicle should lead when none of them fit.
+      score -= 60 + (brief.passengers - v.seats) * 12;
       negatives.push(`only ${v.seats} seats`);
     }
   }
@@ -362,7 +368,8 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
   // at all qualifies — better to answer with a caveat than to answer with
   // nothing.
   const feasible = pool.filter((v) => meetsHardConstraints(v, resolved));
-  const candidates = feasible.length ? feasible : pool;
+  const nothingFits = feasible.length === 0;
+  const candidates = nothingFits ? pool : feasible;
 
   const ranked = candidates
     .map((v) => scoreVehicle(v, resolved))
@@ -398,9 +405,19 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
   if (resolved.budgetPerDay) constraints.push(`about ${money(resolved.budgetPerDay)} a day`);
   if (resolved.occasion !== "unknown") constraints.push(`a ${resolved.occasion} trip`);
 
-  const summary = constraints.length
-    ? `Matched on ${sentence(constraints)} — ${picks[0]?.name ?? "no vehicle"} is the closest fit.`
-    : `Our three strongest all-round options right now, led by the ${picks[0]?.name ?? "fleet"}.`;
+  // Do not claim a match that was not made. When the pool fell back, every pick
+  // breaks at least one stated constraint, and saying "Matched on 12 people"
+  // over three five-seaters is the answer contradicting itself.
+  const overCapacity =
+    resolved.passengers !== undefined && !pool.some((v) => v.seats >= resolved.passengers!);
+
+  const summary = nothingFits
+    ? overCapacity
+      ? `Nothing we run seats ${resolved.passengers} on its own — the ${picks[0]?.name ?? "largest vehicle"} is the closest, and two cars would cover the party.`
+      : `Nothing matches every constraint at once — these come closest, with the compromise noted on each.`
+    : constraints.length
+      ? `Matched on ${sentence(constraints)} — ${picks[0]?.name ?? "no vehicle"} is the closest fit.`
+      : `Our three strongest all-round options right now, led by the ${picks[0]?.name ?? "fleet"}.`;
 
   return { picks, summary, resolved };
 }
