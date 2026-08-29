@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 
+import { isOffRoad, type UnitStatus } from "@/lib/taxonomy";
 import { db } from "@/server/db/client";
 import {
   coupons,
@@ -59,6 +60,84 @@ export async function getUnitBranches() {
     .from(vehicleUnits)
     .orderBy(asc(vehicleUnits.branch));
   return rows.map((r) => r.branch);
+}
+
+/**
+ * Moves a unit between branches, or on and off the road.
+ *
+ * The units board was read-only, so the two things that actually happen to a
+ * car — it gets repositioned to another branch, or it comes off the road —
+ * could only be recorded by editing the database by hand.
+ *
+ * Status carries the same consequence a maintenance job does, and for the same
+ * reason: `vehicles.unitsAvailable` is what the public fleet offers, so taking
+ * a unit off the road without moving stock leaves a car on a ramp still
+ * bookable. `setMaintenanceStatus` owns that transition for jobs; this owns it
+ * for a direct status change, using the same both-ways clamp so repeated
+ * clicks cannot invent stock.
+ *
+ * A unit whose off-road status came from an open maintenance job is not
+ * released here — closing the job is what puts it back, and doing it in two
+ * places would return the same unit to stock twice.
+ */
+export async function updateUnit(
+  id: string,
+  patch: { branch?: string; status?: UnitStatus },
+) {
+  const [unit] = await db
+    .select({
+      id: vehicleUnits.id,
+      registration: vehicleUnits.registration,
+      status: vehicleUnits.status,
+      branch: vehicleUnits.branch,
+      vehicleId: vehicleUnits.vehicleId,
+      slug: vehicles.slug,
+      openJobs: sql<number>`(
+        select count(*)::int from ${maintenanceJobs}
+        where ${maintenanceJobs.unitId} = ${vehicleUnits.id} and ${maintenanceJobs.status} <> 'done'
+      )`,
+    })
+    .from(vehicleUnits)
+    .innerJoin(vehicles, eq(vehicles.id, vehicleUnits.vehicleId))
+    .where(eq(vehicleUnits.id, id))
+    .limit(1);
+
+  if (!unit) return { ok: false as const, reason: "not-found" as const };
+
+  const nextStatus = patch.status ?? (unit.status as UnitStatus);
+  const wasOff = isOffRoad(unit.status);
+  const nowOff = isOffRoad(nextStatus);
+
+  if (wasOff && !nowOff && unit.openJobs > 0) {
+    return {
+      ok: false as const,
+      reason: "open-job" as const,
+      registration: unit.registration,
+      openJobs: unit.openJobs,
+    };
+  }
+
+  const [updated] = await db
+    .update(vehicleUnits)
+    .set({
+      ...(patch.branch !== undefined ? { branch: patch.branch } : {}),
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+    })
+    .where(eq(vehicleUnits.id, id))
+    .returning();
+
+  const stockMoved = wasOff !== nowOff;
+  if (stockMoved) {
+    const delta = nowOff ? -1 : 1;
+    await db
+      .update(vehicles)
+      .set({
+        unitsAvailable: sql`greatest(0, least(${vehicles.unitsTotal}, ${vehicles.unitsAvailable} + ${delta}))`,
+      })
+      .where(eq(vehicles.id, unit.vehicleId));
+  }
+
+  return { ok: true as const, unit: updated, stockMoved, slug: unit.slug };
 }
 
 /* -------------------------------------------------------------- Documents */

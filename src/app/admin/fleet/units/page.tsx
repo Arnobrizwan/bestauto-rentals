@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { DataTable, Td, Tr } from "@/components/admin/data-table";
 import { StatRow } from "@/components/admin/stat-row";
+import { UnitActions } from "@/components/admin/unit-actions";
 import { FilterTabs, PageHeader, TableSearch } from "@/components/admin/table";
 import { Badge, Skeleton } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
@@ -39,7 +40,7 @@ export default async function UnitsPage({ searchParams }: { searchParams: Search
     <>
       <PageHeader
         title="Units"
-        subtitle={`${formatNumber(units.length)} registered cars across ${branches.length} branches — the individual vehicles behind each model`}
+        subtitle={`${formatNumber(units.length)} registered cars across ${branches.length} branches — the individual vehicles behind each model. Repositioning a unit or taking it off the road is recorded from its row; going off the road removes it from what the public fleet offers.`}
       />
 
       <StatRow
@@ -58,7 +59,7 @@ export default async function UnitsPage({ searchParams }: { searchParams: Search
 
       <DataTable
         rowCount={units.length}
-        minWidth={980}
+        minWidth={1240}
         toolbar={
           <>
             <Suspense fallback={<Skeleton className="h-10 w-full sm:max-w-xs" />}>
@@ -87,6 +88,7 @@ export default async function UnitsPage({ searchParams }: { searchParams: Search
           { label: "Odometer", align: "right" },
           { label: "Open jobs", align: "right" },
           { label: "Papers", align: "right" },
+          { label: "Branch & status", align: "right" },
         ]}
         empty={{ title: "No units match", detail: "Try clearing the search or switching status." }}
       >
@@ -118,6 +120,9 @@ export default async function UnitsPage({ searchParams }: { searchParams: Search
               ) : (
                 <span className="text-ink-400">{u.soonestExpiryDays}d</span>
               )}
+            </Td>
+            <Td align="right">
+              <UnitActions id={u.id} branch={u.branch} status={u.status} />
             </Td>
           </Tr>
         ))}

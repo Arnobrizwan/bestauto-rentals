@@ -92,3 +92,22 @@ export const BRANCHES = [
   "Rajshahi City",
   "Cox's Bazar",
 ] as const;
+
+/**
+ * What can be true of one registered car.
+ *
+ * `available` and `on-hire` are both stock — a car out on hire is still part
+ * of the fleet, and the booking that took it already moved the counter.
+ * `maintenance` and `off-road` are not: those are the two that must take a
+ * unit out of `vehicles.unitsAvailable`, or a car on a garage ramp stays
+ * bookable on the public site. Shared by the units API, the repository that
+ * moves the stock, and the select on the units row.
+ */
+export const UNIT_STATUSES = ["available", "on-hire", "maintenance", "off-road"] as const;
+
+export type UnitStatus = (typeof UNIT_STATUSES)[number];
+
+/** Off the road is the half of the vocabulary that is not bookable stock. */
+export function isOffRoad(status: string) {
+  return status === "maintenance" || status === "off-road";
+}

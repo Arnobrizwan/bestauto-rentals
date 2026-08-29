@@ -31,6 +31,40 @@ export async function upsertCustomer(input: {
   return created;
 }
 
+/**
+ * Corrects a customer's contact details.
+ *
+ * The customers table was read-only, so a transposed digit in a phone number
+ * or a misspelt name could not be fixed from the dashboard — and the phone
+ * number is how the counter reaches someone whose flight has landed early.
+ *
+ * `country` and `countryCode` are deliberately not editable here: the code is
+ * an ISO 3166-1 numeric key that joins to the world-map shapes on the
+ * dashboard, and letting someone type a country name without its code would
+ * silently drop that customer off the map. Those come from where the booking
+ * was placed, which is a fact about the booking rather than a contact detail.
+ *
+ * The email carries a unique index; a clash is reported rather than thrown, so
+ * the caller can say which address is already taken.
+ */
+export async function updateCustomer(
+  id: string,
+  patch: { name?: string; email?: string; phone?: string; city?: string },
+) {
+  if (patch.email) {
+    const [clash] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.email, patch.email))
+      .limit(1);
+    if (clash && clash.id !== id) return { ok: false as const, reason: "email-taken" as const };
+  }
+
+  const [row] = await db.update(customers).set(patch).where(eq(customers.id, id)).returning();
+  if (!row) return { ok: false as const, reason: "not-found" as const };
+  return { ok: true as const, customer: row };
+}
+
 export async function listCustomers(opts: { q?: string; page?: number; pageSize?: number } = {}) {
   const clauses: SQL[] = [];
   if (opts.q) {

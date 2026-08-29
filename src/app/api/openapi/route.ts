@@ -183,6 +183,34 @@ export async function GET(req: Request) {
           responses: { "200": { description: "the new status, and whether stock moved" }, "401": errorResponse, "404": errorResponse },
         },
       },
+      "/api/units/{id}": {
+        patch: {
+          summary: "Reposition a unit, or take it off the road (admin)",
+          description:
+            "The units board listed every registered car and could change nothing about one. Status carries the same consequence a maintenance job does — off the road removes the unit from unitsAvailable and revalidates the public fleet — so a car pulled off after a knock stops being bookable. A unit held off the road by an open maintenance job is not released here: closing the job is what returns it, and doing it in both places would put the same car back into stock twice.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": { description: "the updated unit, and whether stock moved" },
+            "401": errorResponse,
+            "404": errorResponse,
+            "409": { description: "held off the road by an open maintenance job" },
+          },
+        },
+      },
+      "/api/customers/{id}": {
+        patch: {
+          summary: "Correct a customer's contact details (admin)",
+          description:
+            "Name, email, phone and city. Country and its ISO code are not editable — the code joins to the world map on the dashboard and records where the booking came from, not how to reach the person. Email is unique, so a clash is a 409 rather than a 500.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": { description: "the updated customer" },
+            "401": errorResponse,
+            "404": errorResponse,
+            "409": { description: "that email belongs to another customer" },
+          },
+        },
+      },
       "/api/testimonials": {
         get: {
           summary: "List every testimonial, shown or hidden (admin)",

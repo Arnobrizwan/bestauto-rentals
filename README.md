@@ -72,9 +72,9 @@ npm run dev         # sign in at /login with the account /setup created
 | `npm run build` | Production build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint incl. the React Compiler rules |
-| `npm run db:push` / `db:seed` / `db:reset` | Schema and data |
-| `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables, and only when empty, so it is safe against a live database |
-| `npm test` | Unit tests over the pure logic — pricing, automation, model-output validation, sessions, the outbox state machine and the concierge slot parser. 77 tests, no database |
+| `npm run db:push` / `db:seed` / `db:reset` | Schema and data. `db:push` is how the schema is applied; `drizzle/` is the written record of what it applied, not a `drizzle-kit migrate` chain |
+| `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables and the home-page testimonials, and only when empty, so it is safe against a live database |
+| `npm test` | Unit tests over the pure logic — pricing, automation, model-output validation, sessions, the outbox state machine and the concierge slot parser. 105 tests, no database |
 | `npm run test:routes` | Asserts every sidebar link resolves and every admin page is linked |
 | `npm run test:qr` | Golden test for the QR encoder |
 | `npm run eval` | **AI evaluation suite** — 65 assertions; every one must pass on the rules engine, 85% when a hosted model answers |
@@ -110,7 +110,7 @@ concierge tags every reply with it.
 
 ## Admin dashboard
 
-Twenty-seven pages in six groups, matching the depth of the Figma sidebar.
+Twenty-eight pages in six groups, matching the depth of the Figma sidebar.
 
 **The design is a retail/POS template.** Its Inventory group runs Products, Create Product, Expired
 Products, Low Stocks, Category, Sub Category, Brands, Units, Variant Attributes, Warranties, Print
@@ -148,6 +148,30 @@ A reviewer who wants the literal labels can have them in a single edit — they 
 | Sales · Invoices · Sales Return · Quotation | Bookings · Invoices · Cancellations · Quotes | VAT shown inclusive, refunds computed from live policy |
 | POS | Counter booking | Posts to the same endpoint as the public site |
 | Super Admin | Team & roles | Create staff accounts; roles enforced server-side |
+| — | **Testimonials** | Not in the template. The home page carousel was six reviews hardcoded in the component that rendered them |
+
+### What can be written, and what cannot
+
+Ten of these screens write. The rest are derived reports over the same rows — Availability,
+Invoices, Cancellations, Quotes, Segments, Brands, Body types, Specs, Service history, Handover,
+Vehicle QR, Branch transfers and Low availability all read from bookings, vehicles and units, and
+giving any of them its own write path would create a second source of truth for a number that
+already has one. You change a segment by editing the vehicle that is in it.
+
+The ten that do write, and what each one owns:
+
+| Screen | Writes |
+|---|---|
+| Vehicles · Add vehicle | The catalogue, and the vehicle edit form |
+| Units | A unit's branch, and whether it is on the road — going off the road takes it out of `unitsAvailable` and revalidates the public fleet |
+| Document expiry | Records a renewal, which is what takes a car off the compliance board |
+| Off-road & maintenance | Opens and closes jobs; the same stock movement as a unit going off the road |
+| Bookings | Confirm, cancel, reinstate — cancelling releases the unit and emits `booking.cancelled` |
+| Counter booking | Posts to the same endpoint the public site does |
+| Customers | Contact details. Country is not editable: it is an ISO code that joins to the world map and describes where the booking came from, not how to reach the person |
+| Leads | Status, which is what clears the hot-lead badge |
+| Offers & coupons | Creates, stops and deletes discount codes; revalidates `/` |
+| Testimonials | Publishes, edits, hides and deletes the reviews on the home page; revalidates `/` |
 
 Two of these are worth calling out because they are the ones a template would not have thought of.
 **Document expiry** exists because a car in Bangladesh cannot legally carry a paying passenger
