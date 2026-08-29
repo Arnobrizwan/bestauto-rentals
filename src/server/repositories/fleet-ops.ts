@@ -389,3 +389,35 @@ export async function setMaintenanceStatus(jobId: string, status: "open" | "in-p
 
   return { jobId, status, stockMoved: wasOffRoad !== nowOffRoad, vehicleId: job.vehicleId, slug: job.vehicleSlug };
 }
+
+/**
+ * Renews a statutory document.
+ *
+ * The document expiry board was read-only, which made it a list of problems
+ * with no way to record the fix: a fitness certificate renewed at BRTA this
+ * morning still showed as expiring, so the same car kept appearing on the
+ * board and in the daily digest until someone edited the database by hand.
+ *
+ * The new window runs from today, and the caller supplies how long the
+ * document is good for — twelve months for most, but a route permit is not
+ * always a year, so it is a parameter rather than an assumption.
+ */
+export async function renewDocument(id: string, months: number, reference?: string) {
+  const issued = new Date();
+  const expires = new Date(issued);
+  expires.setMonth(expires.getMonth() + months);
+
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  const [row] = await db
+    .update(vehicleDocuments)
+    .set({
+      issuedAt: iso(issued),
+      expiresAt: iso(expires),
+      ...(reference ? { reference } : {}),
+    })
+    .where(eq(vehicleDocuments.id, id))
+    .returning();
+
+  return row ?? null;
+}

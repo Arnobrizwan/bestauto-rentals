@@ -167,6 +167,14 @@ export async function GET(req: Request) {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },
       },
+      "/api/documents/{id}": {
+        patch: {
+          summary: "Record a renewed statutory document (admin)",
+          description:
+            "The expiry board was read-only, so it listed problems with no way to record the fix — a renewed fitness certificate kept reappearing in the daily digest until the database was edited by hand.",
+          responses: { "200": { description: "the renewed document" }, "401": errorResponse, "404": errorResponse },
+        },
+      },
       "/api/maintenance/{id}": {
         patch: {
           summary: "Move a maintenance job, and the car's availability with it (admin)",

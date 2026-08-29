@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { DataTable, Td, Tr } from "@/components/admin/data-table";
+import { DocumentActions } from "@/components/admin/document-actions";
 import { StatRow } from "@/components/admin/stat-row";
 import { FilterTabs, PageHeader } from "@/components/admin/table";
 import { Badge, Skeleton } from "@/components/ui";
@@ -81,6 +82,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Se
           { label: "Branch" },
           { label: "Expires" },
           { label: "Status", align: "right" },
+          { label: "Actions", align: "right" },
         ]}
         empty={{ title: "Nothing to show", detail: "No documents match this filter." }}
       >
@@ -106,6 +108,9 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Se
               ) : (
                 <span className="text-ink-400">{d.daysLeft} days</span>
               )}
+            </Td>
+            <Td align="right">
+              <DocumentActions id={d.id} />
             </Td>
           </Tr>
         ))}
