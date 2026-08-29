@@ -247,6 +247,28 @@ Four agents, one provider interface, and a deterministic engine behind each of t
 | **Lead qualifier** | Every lead intake + `/admin/ai` sandbox | Scores 0–100 with an itemised breakdown and a next action |
 | **Operations analyst** | Dashboard, "AI operations brief" | Writes observations over the live metrics, each citing a real figure |
 
+Every agent degrades to a deterministic engine when no vendor key is present, and every answer is
+filtered against the same hard constraints regardless of which path produced it.
+
+```mermaid
+flowchart TD
+  IN["Free text<br/>'six of us, a week in Sylhet'"] --> RES["resolveBrief()<br/>party size · gearbox · fuel · budget"]
+  RES --> P{"Vendor key<br/>configured?"}
+  P -->|no| RULES["Deterministic engine<br/>scored + ranked"]
+  P -->|yes| MODEL["Hosted model<br/>qwen-plus"]
+  MODEL --> TOOLS["Tool calls<br/>search_vehicles · check_availability · quote_price"]
+  TOOLS --> FLEET[("Live fleet")]
+  FLEET --> MODEL
+  MODEL --> GATE["meetsHardConstraints()"]
+  RULES --> GATE
+  GATE --> OUT["Ranked picks<br/>+ the trade-off, stated"]
+  GATE -.->|model returns nothing usable| RULES
+```
+
+The gate is one function applied at three points — the candidate pool, the shortlist the model
+reasons over, and what the model hands back — so the two paths cannot disagree about what counts as
+a valid answer.
+
 ### Provider-agnostic by design
 
 `src/ai/provider/` defines one narrow contract — system prompt, messages, tools, JSON mode — with
@@ -390,12 +412,32 @@ only; the sign-in screen is a plain form with no hints.
 `src/automation/` is a small dependency-free workflow engine. Events are appended to an immutable
 log, matched against operator-editable rules, and every action is recorded as an auditable step.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Src as Booking · Lead · Webhook · Cron
+    participant Eng as Automation engine
+    participant Log as Event log
+    participant Out as Outbox
+    participant Ven as Resend · Slack
+
+    Src->>Eng: emit(trigger, payload)
+    Eng->>Log: append immutable event
+    Eng->>Eng: match enabled rules on conditions
+    loop every action in every matching rule
+        Eng->>Eng: run action, record step result
+        Eng->>Out: queue message
+    end
+    Eng->>Log: record run, timing, outcome
+    Note over Out,Ven: /api/cron/drain-outbox, behind CRON_SECRET
+    Out->>Ven: deliver oldest-first
+    Ven-->>Out: 2xx, marked sent
+    Ven-->>Out: error, backoff and retry, dead after 6
 ```
-booking.created ─┐
-lead.created     ├─→ event log ─→ match rules ─→ run actions ─→ audit trail
-webhook.received │                (conditions)   (outbox)       (/admin/automations)
-schedule.daily  ─┘
-```
+
+A worked example, end to end: a visitor tells the concierge they need a human. That emits
+`conversation.handoff`, which matches the **Concierge handoff** rule, which opens a support task and
+notifies `#support` — both visible in the outbox on `/admin/automations` seconds later.
 
 **Triggers:** `lead.created`, `booking.created`, `booking.cancelled`, `conversation.handoff`,
 `schedule.daily`, `webhook.received`
@@ -524,11 +566,28 @@ rather than a cached counter. A client cannot post its own total.
 
 ## Architecture
 
+One request path, one place for SQL, and two consumers of the same API.
+
+```mermaid
+flowchart LR
+  C["Customer site<br/>(site)"] --> P
+  A["Admin dashboard<br/>/admin"] --> P
+  P["proxy.ts<br/>edge auth gate"] --> R["Route handlers<br/>/api/*"]
+  R --> S["Services<br/>booking · leads · insights"]
+  R --> AI["AI layer<br/>4 agents"]
+  S --> AU["Automation engine<br/>8 rules"]
+  S --> Q["Repositories<br/>all SQL lives here"]
+  AI --> Q
+  AU --> Q
+  AU -.->|outbox| V["Resend · Slack"]
+  Q --> DB[("Postgres<br/>Neon")]
+```
+
 ```
 src/
 ├── app/
 │   ├── (site)/          customer front-end   — home, fleet, vehicle, confirmation
-│   ├── admin/           dashboard            — 28 pages, 6 sidebar groups
+│   ├── admin/           dashboard            — 29 pages, 6 sidebar groups
 │   └── api/             HTTP surface
 ├── ai/
 │   ├── provider/        vendor adapters behind one interface
