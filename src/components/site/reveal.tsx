@@ -33,9 +33,9 @@ export function RevealOnScroll() {
     let failsafe: number | undefined;
 
     const query = () =>
-      Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]")).filter(
-        (n) => !n.hasAttribute("data-revealed"),
-      );
+      Array.from(
+        document.querySelectorAll<HTMLElement>("[data-reveal]"),
+      ).filter((n) => !n.hasAttribute("data-revealed"));
 
     const reveal = (el: HTMLElement, delay = 0) => {
       window.setTimeout(() => el.setAttribute("data-revealed", "true"), delay);
@@ -46,10 +46,13 @@ export function RevealOnScroll() {
 
       // No animation wanted, and nothing to observe for: show everything now
       // and keep showing anything that arrives later.
-      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
       // No observer, no reveal — and the CSS starts these elements at opacity
       // 0, so without this the page is simply blank.
-      const revealImmediately = reducedMotion || !("IntersectionObserver" in window);
+      const revealImmediately =
+        reducedMotion || !("IntersectionObserver" in window);
 
       let anyRevealed = false;
 
@@ -73,8 +76,12 @@ export function RevealOnScroll() {
       // the same element twice is a no-op in any case.
       const scan = () => {
         for (const node of query()) {
-          if (revealImmediately) reveal(node);
-          else intersection?.observe(node);
+          if (revealImmediately) continue;
+          // Arm and observe together. The CSS only hides an armed element, so
+          // an element this loop never reaches stays visible instead of
+          // disappearing until some later code rescues it.
+          node.setAttribute("data-reveal-armed", "");
+          intersection?.observe(node);
         }
       };
 

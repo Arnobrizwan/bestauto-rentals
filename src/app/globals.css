@@ -89,20 +89,36 @@ body {
 
 /* Reveal-on-scroll: elements start hidden and are unhidden by an
    IntersectionObserver. Anyone who prefers reduced motion just sees them. */
-[data-reveal] {
+/*
+ * Reveal-on-scroll fails open.
+ *
+ * `[data-reveal]` used to start at opacity 0 and rely on JavaScript to turn it
+ * on. Every way that script could fail to reach an element — and it found
+ * several, from an observer set up before the page subtree existed to a
+ * `window.load` listener registered after the event — turned decoration into
+ * permanently invisible content: Current deals, What renters say and the
+ * contact form rendered, present in the DOM, and blank on screen.
+ *
+ * So the hidden state is opt-in and applied by the same code that takes
+ * responsibility for undoing it. `data-reveal-armed` is set only immediately
+ * before an element is handed to the IntersectionObserver. No observer, no
+ * arming, no disappearing content — the worst case is now a section that
+ * appears without animating.
+ */
+[data-reveal][data-reveal-armed] {
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-reveal][data-revealed="true"] {
+[data-reveal][data-reveal-armed][data-revealed="true"] {
   opacity: 1;
   transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  [data-reveal], [data-reveal][data-reveal-armed] { opacity: 1; transform: none; transition: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
