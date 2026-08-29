@@ -37,6 +37,147 @@ automation engine** wired through the middle.
 
 ---
 
+## The seven deliverables, and how each one works
+
+One diagram per submitted item, and a recording for the four you can watch run.
+
+### 1. Live website URL
+
+**https://bestauto-rentals.vercel.app** — Next.js on Vercel, Neon Postgres, an OpenAI-compatible
+model, and a daily cron. The home page and vehicle pages are prerendered and revalidated on write,
+so the fleet is cached until something changes it rather than for a fixed five minutes.
+
+```mermaid
+flowchart LR
+  U["Visitor"] --> E["Vercel edge<br/>CDN + ISR cache"]
+  E --> N["Next.js 16<br/>App Router"]
+  N --> DB[("Neon Postgres")]
+  N --> AI["AI vendor<br/>OpenAI-compatible"]
+  CR["Vercel Cron<br/>daily 07:00"] --> N
+  WH["Partner webhooks<br/>HMAC verified"] --> N
+  N -.->|"revalidatePath on write"| E
+```
+
+### 2. GitHub repository
+
+**https://github.com/Arnobrizwan/bestauto-rentals** — every push is linted, type-checked, unit
+tested and graded against the AI evaluation suite before it can build.
+
+```mermaid
+flowchart LR
+  P["git push"] --> CI["GitHub Actions"]
+  CI --> L["eslint"]
+  CI --> T["tsc --noEmit"]
+  CI --> U["unit tests"]
+  CI --> EV["AI eval, 100% threshold"]
+  L --> B["next build"]
+  T --> B
+  U --> B
+  EV --> B
+  B --> V["Vercel deploy"]
+```
+
+### 3. Functional admin dashboard
+
+No figure on this screen is written in the markup. A filter lives in the URL, the server component
+reads it, a repository turns it into one SQL aggregate, and the widget renders the result — so any
+view is a shareable link, and a write anywhere invalidates the pages it affects.
+
+```mermaid
+flowchart LR
+  F["Filter in the URL<br/>?range=30d&sort=price-asc"] --> S["Server component"]
+  S --> R["Repository<br/>one SQL aggregate"]
+  R --> DB[("Postgres")]
+  DB --> R --> S
+  S --> W["Widget<br/>stat · chart · table · map"]
+  WR["Operator write<br/>edit · confirm · cancel"] -.->|revalidatePath| S
+```
+
+![Admin dashboard](docs/media/admin-dashboard.gif)
+
+### 4. Functional customer front-end
+
+Availability is checked against overlapping reservations for the requested dates rather than a
+standing counter, and the quote and the coupon are both priced on the server — the client never gets
+to say what a code is worth.
+
+```mermaid
+flowchart LR
+  H["Home<br/>search panel"] --> C["/cars<br/>faceted filter"]
+  C --> D["/cars/[slug]"]
+  D --> Q["Quote<br/>priced server-side"]
+  Q --> CP["Coupon<br/>validated server-side"]
+  CP --> AV{"Dates free?<br/>countOverlapping"}
+  AV -->|no| D
+  AV -->|yes| BK["Booking created"]
+  BK --> CF["/booking/[reference]"]
+```
+
+![Customer front-end](docs/media/customer-front-end.gif)
+
+### 5. AI feature demonstration
+
+Four agents share one provider interface and one constraint gate, and every one of them falls back
+to a deterministic engine when no vendor key is present. The brief asked for one AI feature; all
+four of the suggested kinds are here.
+
+```mermaid
+flowchart TD
+  IN["Customer input"] --> A1["Concierge<br/>chat with tool calling"]
+  IN --> A2["Vehicle matcher<br/>free-text brief"]
+  IN --> A3["Lead qualifier<br/>every enquiry, scored"]
+  MT["Live metrics"] --> A4["Ops analyst<br/>dashboard brief"]
+  A1 --> G["Shared constraint gate<br/>+ deterministic fallback"]
+  A2 --> G
+  A3 --> G
+  A4 --> G
+  G --> OUT["Answer grounded in live data"]
+  A1 -.->|"cannot answer"| HO["conversation.handoff<br/>→ automation"]
+```
+
+Below, the matcher is asked for ten people going to Cox's Bazar and returns the only vehicle in the
+fleet that can actually carry them.
+
+![AI vehicle matcher](docs/media/ai-feature.gif)
+
+### 6. Automation workflow
+
+Events are appended to an immutable log, matched against rules an operator can toggle live, and every
+action is recorded as an auditable step. Outbound messages queue in an outbox that retries and
+eventually dead-letters, so a failing vendor never silently loses a message.
+
+```mermaid
+flowchart LR
+  T["Trigger<br/>booking · lead · webhook · cron"] --> L["Event log<br/>immutable"]
+  L --> M["Match rules<br/>8, operator-toggled"]
+  M --> AC["Actions<br/>email · slack · task · inventory"]
+  AC --> O["Outbox<br/>retry, dead after 6"]
+  O --> V["Resend · Slack"]
+  AC --> AU["Audit trail<br/>/admin/automations"]
+```
+
+![Automation workflow](docs/media/automation-workflow.gif)
+
+### 7. README and documentation
+
+This file is the whole of it, plus a machine-readable API reference at
+[`/api/openapi`](https://bestauto-rentals.vercel.app/api/openapi) and a health check at
+[`/api/health`](https://bestauto-rentals.vercel.app/api/health).
+
+```mermaid
+flowchart TD
+  RM["README"] --> S1["Running it<br/>+ environment"]
+  RM --> S2["Admin dashboard<br/>+ what can be written"]
+  RM --> S3["AI layer<br/>+ evaluation harness"]
+  RM --> S4["Automation<br/>+ integration surface"]
+  RM --> S5["API<br/>+ price integrity"]
+  RM --> S6["Architecture<br/>+ data model"]
+  RM --> S7["Authentication<br/>+ security model"]
+  RM --> S8["Deliberate limitations"]
+```
+
+---
+
 ## Stack
 
 - **Next.js 16** (App Router, React 19, React Compiler) — server components for data, client components only where there is interaction
