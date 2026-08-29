@@ -29,12 +29,28 @@ import { listFacets, listVehicles } from "@/server/repositories/vehicles";
  */
 export const revalidate = 300;
 
-const TRUST = [
-  { value: "11", label: "Branches" },
-  { value: "24/7", label: "AI concierge" },
-  { value: "24h", label: "Free cancellation" },
-  { value: "4.8", label: "Average rating" },
-];
+/**
+ * The headline figures, computed where they can be.
+ *
+ * "11 Branches" and "4.8 Average rating" were string literals sitting above a
+ * fleet that could change underneath them: adding a branch or a car left the
+ * banner quietly wrong, and a visitor has no way to tell a measured number
+ * from a decorative one. Branch count and mean rating are now read from the
+ * same data the rest of the page renders.
+ *
+ * The other two stay literal because they are policy, not data — the
+ * concierge is available around the clock and cancellation is free for 24
+ * hours, and neither is stored anywhere to be derived from.
+ */
+function trustStats(branches: number, rating: number, reviewed: number) {
+  return [
+    { value: String(branches), label: "Branches" },
+    { value: "24/7", label: "AI concierge" },
+    { value: "24h", label: "Free cancellation" },
+    // Only claim an average once something has actually been rated.
+    { value: reviewed > 0 ? rating.toFixed(1) : "New", label: "Average rating" },
+  ];
+}
 
 export default async function HomePage() {
   const [{ items, total }, facets, offers] = await Promise.all([
@@ -42,6 +58,12 @@ export default async function HomePage() {
     listFacets(),
     listPublicOffers(),
   ]);
+
+  // Mean of the cars that actually carry a rating, so one unrated new arrival
+  // cannot drag the headline figure down.
+  const rated = items.filter((v) => v.reviewCount > 0);
+  const reviewedCars = rated.length;
+  const averageRating = reviewedCars ? rated.reduce((sum, v) => sum + v.rating, 0) / reviewedCars : 0;
 
   const deals: VehicleCardData[] = items.map((v) => ({
     slug: v.slug,
@@ -122,7 +144,7 @@ export default async function HomePage() {
               </div>
 
               <dl className="mt-12 grid max-w-lg grid-cols-2 gap-6 border-t border-line pt-8 sm:grid-cols-4">
-                {TRUST.map((stat) => (
+                {trustStats(facets.locations.length, averageRating, reviewedCars).map((stat) => (
                   <div key={stat.label}>
                     <dt className="font-display text-2xl font-bold text-ink-900">{stat.value}</dt>
                     <dd className="mt-0.5 text-[13px] text-ink-400">{stat.label}</dd>

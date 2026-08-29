@@ -73,6 +73,10 @@ const createSchema = z.object({
   location: z.string().min(2).max(120),
   unitsTotal: z.coerce.number().int().min(1).max(200),
   description: z.string().max(1200).optional(),
+  // Was hardcoded to [], so an admin-added car fell back to three generic
+  // lines while every seeded car showed a real feature list — the new car
+  // looked thinner than the fleet it joined, for no reason anyone chose.
+  features: z.array(z.string().min(1).max(60)).max(12).optional(),
 });
 
 /** Slugify to the same shape the seeded fleet uses. */
@@ -120,7 +124,7 @@ export async function POST(req: Request) {
     unitsTotal: input.unitsTotal,
     unitsAvailable: input.unitsTotal,
     description: input.description ? sanitizeText(input.description, 1200) : "",
-    features: [],
+    features: (body.data.features ?? []).map((f) => sanitizeText(f, 60)),
     // A car added ten seconds ago has no rating, and the schema default of 4.6
     // put four and a half stars on the public page for a review nobody wrote.
     // Zero with zero reviews is the truth; the card shows "New" for it.
