@@ -58,7 +58,7 @@ export default async function HomePage() {
     reviewCount: v.reviewCount,
     segment: v.segment,
     location: v.location,
-    unitsAvailable: v.unitsAvailable,
+    unitsFree: v.unitsFree,
   }));
 
   return (

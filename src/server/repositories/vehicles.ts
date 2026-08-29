@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql, type SQL } from "drizzle-orm";
 
 import { BRANCHES } from "@/lib/taxonomy";
+import { countOverlapping } from "@/server/repositories/bookings";
 import { db } from "@/server/db/client";
 import { bookings, vehicles, type Vehicle } from "@/server/db/schema";
 
@@ -23,7 +24,8 @@ export type VehicleFilters = {
   offset?: number;
 };
 
-export type VehicleWithStats = Vehicle & { bookingCount: number; revenue: number };
+/** `unitsFree` is availability over the requested window — today, when none was given. */
+export type VehicleWithStats = Vehicle & { bookingCount: number; revenue: number; unitsFree: number };
 
 function buildWhere(f: VehicleFilters): SQL | undefined {
   const clauses: SQL[] = [];
@@ -99,16 +101,49 @@ export async function listVehicles(f: VehicleFilters = {}) {
             ? [desc(vehicles.year), desc(vehicles.createdAt)]
             : [desc(vehicles.rating)];
 
+  /*
+   * Units genuinely free, for the window being asked about.
+   *
+   * Availability had two answers. The public scarcity badge read
+   * `unitsAvailable`, a running counter the automation engine decrements on
+   * every booking; the booking guard counted bookings that actually overlap
+   * the requested dates. They disagree constantly — a car fully booked next
+   * week reads "3 available" today, and a car whose counter is exhausted by
+   * bookings in December is refused for a hire in March.
+   *
+   * The date-aware count is the one that can be checked against reality, so it
+   * is the only one the site quotes now. With no dates in play the window is
+   * today, which makes "last one available" a claim about right now rather
+   * than an unverifiable number.
+   */
+  const from = f.availableFrom ?? new Date();
+  const to = f.availableTo ?? new Date();
+
+  const overlapping = db
+    .select({ n: sql<number>`count(*)` })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.vehicleId, vehicles.id),
+        sql`${bookings.status} <> 'cancelled'`,
+        lte(bookings.pickupAt, to),
+        gte(bookings.dropoffAt, from),
+      ),
+    );
+
+  const freeUnits = sql<number>`greatest(0, ${vehicles.unitsTotal} - (${overlapping}))::int`;
+
   const [rows, stats, totalRow] = await Promise.all([
-    db.select().from(vehicles).where(where).orderBy(...orderBy),
+    db.select({ vehicle: vehicles, unitsFree: freeUnits }).from(vehicles).where(where).orderBy(...orderBy),
     statsByVehicle(),
     db.select({ count: sql<number>`count(*)::int` }).from(vehicles).where(where),
   ]);
 
-  let enriched: VehicleWithStats[] = rows.map((v) => ({
-    ...v,
-    bookingCount: stats.get(v.id)?.bookingCount ?? 0,
-    revenue: stats.get(v.id)?.revenue ?? 0,
+  let enriched: VehicleWithStats[] = rows.map((r) => ({
+    ...r.vehicle,
+    unitsFree: Number(r.unitsFree),
+    bookingCount: stats.get(r.vehicle.id)?.bookingCount ?? 0,
+    revenue: stats.get(r.vehicle.id)?.revenue ?? 0,
   }));
 
   // Popularity ordering needs the aggregate, so it is applied after the join.
@@ -214,4 +249,26 @@ export async function deleteVehicle(slug: string) {
 
   await db.delete(vehicles).where(eq(vehicles.slug, slug));
   return { ok: true as const, name: vehicle.name };
+}
+
+/**
+ * Units of one vehicle free across a window — today, when none is given.
+ *
+ * The single definition of "available" the whole site quotes: the same overlap
+ * test the booking guard applies, so the badge on a car's page and the answer
+ * at checkout can never contradict each other.
+ */
+export async function countFreeUnits(vehicleId: string, from = new Date(), to = new Date()) {
+  const [row] = await db
+    .select({ total: vehicles.unitsTotal })
+    .from(vehicles)
+    .where(eq(vehicles.id, vehicleId))
+    .limit(1);
+  if (!row) return 0;
+
+  // The guard's own counter, not a second hand-written copy of its predicate.
+  // Two fragments that only look identical is how the site ended up quoting
+  // one availability and enforcing another.
+  const taken = await countOverlapping(vehicleId, from, to);
+  return Math.max(0, row.total - taken);
 }

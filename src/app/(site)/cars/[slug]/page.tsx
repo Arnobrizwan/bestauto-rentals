@@ -8,7 +8,7 @@ import { VehicleCard, type VehicleCardData } from "@/components/site/vehicle-car
 import { Badge } from "@/components/ui";
 import { DRIVER_NIGHT_ALLOWANCE, cityOfBranch, intercityQuotesFrom } from "@/lib/intercity";
 import { formatCurrency } from "@/lib/utils";
-import { getVehicleBySlug, listFacets, listVehicles } from "@/server/repositories/vehicles";
+import { countFreeUnits, getVehicleBySlug, listFacets, listVehicles } from "@/server/repositories/vehicles";
 
 /**
  * Prerendered per vehicle and revalidated every five minutes.
@@ -63,8 +63,11 @@ const SPECS = [
 
 export default async function VehiclePage({ params }: { params: Params }) {
   const { slug } = await params;
-  const vehicle = await getVehicleBySlug(slug);
+const vehicle = await getVehicleBySlug(slug);
   if (!vehicle) notFound();
+
+  // Free right now, by the same overlap test the booking guard uses.
+  const unitsFreeToday = await countFreeUnits(vehicle.id);
 
   const [facets, related] = await Promise.all([
     listFacets(),
@@ -89,7 +92,7 @@ export default async function VehiclePage({ params }: { params: Params }) {
       reviewCount: v.reviewCount,
       segment: v.segment,
       location: v.location,
-      unitsAvailable: v.unitsAvailable,
+      unitsFree: v.unitsFree,
     }));
 
   const specValues: Record<string, string> = {
@@ -129,7 +132,10 @@ export default async function VehiclePage({ params }: { params: Params }) {
               />
               <div className="absolute top-4 left-4 flex gap-2">
                 <Badge tone="warning">{vehicle.segment === "exclusive" ? "Exclusive" : vehicle.bodyType}</Badge>
-                {vehicle.unitsAvailable <= 1 && <Badge tone="danger">Last one available</Badge>}
+                {/* The same date-aware count the fleet cards and the booking
+                    guard use — the running counter said "last one" for cars
+                    that were completely free on the dates being asked about. */}
+                {unitsFreeToday <= 1 && <Badge tone="danger">Last one available</Badge>}
               </div>
             </div>
 

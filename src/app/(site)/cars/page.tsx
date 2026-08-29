@@ -74,7 +74,7 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
     reviewCount: v.reviewCount,
     segment: v.segment,
     location: v.location,
-    unitsAvailable: v.unitsAvailable,
+    unitsFree: v.unitsFree,
   }));
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));

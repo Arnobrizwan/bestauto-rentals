@@ -22,7 +22,8 @@ export type VehicleCardData = {
   reviewCount: number;
   segment: string;
   location: string;
-  unitsAvailable: number;
+  /** Free over the dates being searched — today, when none were given. */
+  unitsFree: number;
 };
 
 const SPEC_ICONS = {
@@ -148,7 +149,12 @@ export function VehicleCard({
     writeFavourites(without.length === current.length ? [...without, vehicle.slug] : without);
   }, [vehicle.slug]);
 
-  const scarce = vehicle.unitsAvailable <= 1;
+  // The date-aware count, not the running `unitsAvailable` counter. The two
+  // disagreed constantly: a car fully booked next week still read "3
+  // available", and a car whose counter was spent on December bookings looked
+  // scarce for a hire in March. Only one of them can be checked against
+  // reality, so only one is quoted.
+  const scarce = vehicle.unitsFree <= 1;
 
   return (
     <article
