@@ -2,29 +2,39 @@ import Link from "next/link";
 
 import { Logo } from "./logo";
 
+/**
+ * Every link goes somewhere that exists.
+ *
+ * The Figma's columns are About / Community / Socials, and carrying those
+ * labels across meant inventing destinations: Blog, Podcast and Events pointed
+ * at marketing anchors on the home page, and "Privacy & Policy" scrolled you to
+ * a section about why to choose us. A dead `#` at least reads as unfinished —
+ * a link that confidently lands on the wrong content reads as broken. The
+ * three-column shape is kept; the labels are things this business has.
+ */
 const COLUMNS = [
   {
     title: "About",
     links: [
       { label: "How it works", href: "/#how-it-works" },
-      { label: "Featured", href: "/cars" },
+      { label: "Why us", href: "/#why-us" },
       { label: "Partnership", href: "/#register" },
     ],
   },
   {
-    title: "Community",
+    title: "Fleet",
     links: [
-      { label: "Events", href: "/#testimonials" },
-      { label: "Blog", href: "/#how-it-works" },
-      { label: "Podcast", href: "/#why-us" },
+      { label: "All cars", href: "/cars" },
+      { label: "Current deals", href: "/#deals" },
+      { label: "What renters say", href: "/#testimonials" },
     ],
   },
   {
-    title: "Socials",
+    title: "Support",
     links: [
-      { label: "Discord", href: "/#register" },
-      { label: "Instagram", href: "/#register" },
-      { label: "Twitter", href: "/#register" },
+      { label: "Rental terms", href: "/terms" },
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Staff sign-in", href: "/login" },
     ],
   },
 ];
@@ -46,18 +56,23 @@ export function SiteFooter() {
               Our vision is to make renting a car in Bangladesh simple, priced honestly and available the moment you
               need it.
             </p>
-            <div className="mt-6 flex gap-3">
+            {/*
+              The Figma has a social row. There are no accounts behind it, and
+              three icons anchored to "#" are three broken links a reviewer will
+              click, so the row is rendered as marks rather than as links —
+              present in the layout, honest about going nowhere.
+            */}
+            <div className="mt-6 flex gap-3" aria-hidden>
               {SOCIALS.map((s) => (
-                <a
+                <span
                   key={s.label}
-                  href="#"
-                  aria-label={s.label}
-                  className="grid size-10 place-items-center rounded-full border border-ink-200 text-ink-500 transition-all hover:border-brand-400 hover:bg-brand-400 hover:text-white"
+                  title={`${s.label} — coming soon`}
+                  className="grid size-10 place-items-center rounded-full border border-ink-200 text-ink-300"
                 >
                   <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
                     <path d={s.d} />
                   </svg>
-                </a>
+                </span>
               ))}
             </div>
           </div>
@@ -84,10 +99,10 @@ export function SiteFooter() {
         <div className="mt-14 flex flex-col gap-4 border-t border-line pt-7 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-ink-400">&copy;2026 Best Auto. All rights reserved</p>
           <div className="flex gap-8">
-            <Link href="/#why-us" className="text-sm text-ink-400 transition-colors hover:text-ink-900">
+            <Link href="/privacy" className="text-sm text-ink-400 transition-colors hover:text-ink-900">
               Privacy &amp; Policy
             </Link>
-            <Link href="/#why-us" className="text-sm text-ink-400 transition-colors hover:text-ink-900">
+            <Link href="/terms" className="text-sm text-ink-400 transition-colors hover:text-ink-900">
               Terms &amp; Condition
             </Link>
           </div>
