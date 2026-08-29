@@ -75,10 +75,10 @@ npm run dev         # sign in at /login with the account /setup created
 | `npm run lint` | ESLint incl. the React Compiler rules |
 | `npm run db:push` / `db:seed` / `db:reset` | Schema and data. `db:push` is how the schema is applied; `drizzle/` is the written record of what it applied, not a `drizzle-kit migrate` chain |
 | `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables and the home-page testimonials, and only when empty, so it is safe against a live database |
-| `npm test` | Unit tests over the pure logic — pricing, automation, model-output validation, sessions, the outbox state machine and the concierge slot parser. 105 tests, no database |
+| `npm test` | Unit tests over the pure logic — pricing, automation, model-output validation, sessions, the outbox state machine, the concierge slot parser and the matcher's hard constraints. 114 tests, no database |
 | `npm run test:routes` | Asserts every sidebar link resolves and every admin page is linked |
 | `npm run test:qr` | Golden test for the QR encoder |
-| `npm run eval` | **AI evaluation suite** — 65 assertions; every one must pass on the rules engine, 85% when a hosted model answers |
+| `npm run eval` | **AI evaluation suite** — 69 assertions; every one must pass on the rules engine, 85% when a hosted model answers |
 | `npm run build:map` | Regenerates the world-map paths from the TopoJSON atlas |
 
 ### Environment
@@ -222,7 +222,7 @@ run on a fork.
 
 ### What the unit tests cover
 
-`node:test`, no test framework, no database — 105 tests over the logic where a mistake is silent.
+`node:test`, no test framework, no database — 114 tests over the logic where a mistake is silent.
 They were written where bugs had actually been found, not where coverage was easiest:
 
 | File | Guards |
@@ -267,7 +267,7 @@ Adding a key upgrades all four in place — `ANTHROPIC_API_KEY`, or `OPENAI_API_
 `OPENAI_BASE_URL` for any OpenAI-compatible provider.
 
 **Worth stating honestly: the hosted model scores lower on this project's own suite than the
-deterministic engine does.** The rules engine passes 65/65; `qwen-plus` runs 88–92% across repeated
+deterministic engine does.** The rules engine passes 69/69; `qwen-plus` runs 88–92% across repeated
 runs. It is a real language model doing real tool calls, and it handles phrasing the rules never
 anticipated — but on the cases that were written down, the engine tuned against them wins. That is
 why the evaluation threshold differs by engine rather than being a single number, and why the rules
@@ -306,11 +306,11 @@ asserts it: **any answer containing a price must have called a tool that could p
 
 ### Evaluation
 
-`npm run eval` runs 65 assertions across 23 golden cases. They assert *behaviour*, not wording, so
+`npm run eval` runs 69 assertions across 25 golden cases. They assert *behaviour*, not wording, so
 the same suite grades the rules engine and any hosted model.
 
 ```
-  65/65 checks passed (100.0%) across 3 suites
+  69/69 checks passed (100.0%) across 3 suites
 ```
 
 **The threshold depends on the engine.** A hosted model rephrases itself between runs, so a small
@@ -323,6 +323,16 @@ The suite found four real defects during development, all fixed and now regressi
 age questions routing to vehicle search instead of policy; `"next month"` being double-counted as
 both a firm date and a timeframe; the matcher padding a shortlist with cars too small for the party;
 and `"family of 6"` not parsing as a party size at all.
+
+**What it cannot see, and what covers that instead.** CI runs with no vendor key, so the suite grades
+the deterministic engine — which is the point, because that is the path with no variance to hide a
+regression behind. It also means a defect that exists *only* when a hosted model answers scores
+100% here. One did: the matcher enforced party size and gearbox against the request's structured
+fields, which the public matcher never sets, so the constraints bound on the rules path and were
+skipped on the hosted one. Constraint resolution now happens once, in `resolveBrief`, and both paths
+filter through the same `meetsHardConstraints` — and both are pinned by unit tests in
+`tests/recommender.test.ts`, which are pure functions and therefore run on every `npm test` rather
+than only when a key is present.
 
 ---
 

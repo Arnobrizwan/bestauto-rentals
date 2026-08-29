@@ -162,6 +162,22 @@ export const RECOMMENDER_CASES: RecommenderCase[] = [
     expect: { transmission: "Automatic", maxPricePerDay: 8000 },
   },
   {
+    id: "manual-from-free-text",
+    description: '"manual" in the brief is a constraint, not a preference',
+    // The live failure: the hosted path filtered on the request's structured
+    // fields, which the public matcher never sets, so "I want a manual car"
+    // came back with two automatics. One car in the fleet is manual; the
+    // honest answer is that one, not three that ignore the ask.
+    brief: { brief: "I want a manual car for city driving" },
+    expect: { transmission: "Manual" },
+  },
+  {
+    id: "party-size-from-free-text",
+    description: "Party size read from the sentence must bind, with no structured field set",
+    brief: { brief: "Six of us, a week in Sylhet, under 9000 taka a day" },
+    expect: { minSeats: 6 },
+  },
+  {
     id: "tight-budget",
     description: "A 3,500 taka budget must not lead with the exclusive fleet",
     brief: { brief: "Cheap runaround for Dhaka traffic", budgetPerDay: 3500, occasion: "city" },

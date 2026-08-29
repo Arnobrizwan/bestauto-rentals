@@ -309,10 +309,22 @@ function sentence(parts: string[]) {
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
-export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithStats[]) {
+export type ResolvedBrief = RecommendBrief & { occasion: NonNullable<RecommendBrief["occasion"]> };
+
+/**
+ * The brief as understood: what the caller passed, plus what the free text says.
+ *
+ * The public matcher posts `{ brief: "six of us, a week in Sylhet" }` and
+ * nothing else — every structured field is optional and the UI fills none of
+ * them. So `brief.passengers` is *always* undefined in production, and any
+ * filter written against it is a filter that never runs. Constraint resolution
+ * happens once, here, and every caller filters against the result rather than
+ * against the raw request.
+ */
+export function resolveBrief(brief: RecommendBrief): ResolvedBrief {
   const text = brief.brief ?? "";
   const inferred = inferPreferences(text);
-  const resolved: RecommendBrief & { occasion: NonNullable<RecommendBrief["occasion"]> } = {
+  return {
     ...brief,
     occasion: brief.occasion && brief.occasion !== "unknown" ? brief.occasion : inferOccasion(text),
     budgetPerDay: brief.budgetPerDay ?? inferBudget(text),
@@ -320,18 +332,36 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
     transmission: brief.transmission ?? inferred.transmission,
     fuel: brief.fuel ?? inferred.fuel,
   };
+}
 
-  // Hard constraints. A car that cannot carry the party, or that has the wrong
-  // gearbox when one was explicitly asked for, is not a worse recommendation -
-  // it is not a recommendation. Filter before ranking, and fall back to the
-  // unfiltered pool only if nothing at all qualifies (better to answer with a
-  // caveat than to answer with nothing).
-  const feasible = pool.filter(
-    (v) =>
-      (!resolved.passengers || v.seats >= resolved.passengers) &&
-      (!resolved.transmission || v.transmission === resolved.transmission) &&
-      (!resolved.fuel || v.fuel === resolved.fuel),
+/**
+ * The constraints that are not preferences.
+ *
+ * A car that cannot carry the party, or that has the wrong gearbox when one was
+ * asked for, is not a worse recommendation — it is not a recommendation. One
+ * definition, applied identically to the rules engine's candidate pool, to the
+ * shortlist the model reasons over, and to what the model hands back: three
+ * copies of this predicate had already drifted into two that read the raw brief
+ * and one that read the resolved one.
+ */
+export function meetsHardConstraints(
+  v: Pick<VehicleWithStats, "seats" | "transmission" | "fuel">,
+  brief: RecommendBrief,
+) {
+  return (
+    (!brief.passengers || v.seats >= brief.passengers) &&
+    (!brief.transmission || v.transmission === brief.transmission) &&
+    (!brief.fuel || v.fuel === brief.fuel)
   );
+}
+
+export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithStats[]) {
+  const resolved = resolveBrief(brief);
+
+  // Filter before ranking, and fall back to the unfiltered pool only if nothing
+  // at all qualifies — better to answer with a caveat than to answer with
+  // nothing.
+  const feasible = pool.filter((v) => meetsHardConstraints(v, resolved));
   const candidates = feasible.length ? feasible : pool;
 
   const ranked = candidates
@@ -372,7 +402,7 @@ export async function rulesRecommend(brief: RecommendBrief, pool: VehicleWithSta
     ? `Matched on ${sentence(constraints)} — ${picks[0]?.name ?? "no vehicle"} is the closest fit.`
     : `Our three strongest all-round options right now, led by the ${picks[0]?.name ?? "fleet"}.`;
 
-  return { picks, summary };
+  return { picks, summary, resolved };
 }
 
 /* --------------------------------------------------------------- the agent */
@@ -397,12 +427,16 @@ const recommenderResponseSchema = z.object({
 export async function recommendVehicles(brief: RecommendBrief): Promise<RecommendResult> {
   const started = Date.now();
   const { items: pool } = await listVehicles({ limit: 40 });
-  const baseline = await rulesRecommend(brief, pool);
+  // `resolved` is the brief as understood — party size, gearbox and fuel read
+  // out of the free text. Everything below filters against it rather than
+  // against `brief`, whose structured fields the public matcher never sets.
+  const { picks: baselinePicks, summary: baselineSummary, resolved } = await rulesRecommend(brief, pool);
   const provider = await resolveProviderForRequest();
 
   if (!provider) {
     return {
-      ...baseline,
+      picks: baselinePicks,
+      summary: baselineSummary,
       engine: describeEngine(null),
       latencyMs: Date.now() - started,
     };
@@ -411,11 +445,7 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
   // With a hosted model available, the rules engine still runs first: it
   // shortlists candidates so the model reasons over real rows, and it is the
   // safety net if the call fails or returns something unusable.
-  const feasiblePool = pool.filter(
-    (v) =>
-      (!brief.passengers || v.seats >= brief.passengers) &&
-      (!brief.transmission || v.transmission === brief.transmission),
-  );
+  const feasiblePool = pool.filter((v) => meetsHardConstraints(v, resolved));
   const candidates = (feasiblePool.length ? feasiblePool : pool).slice(0, 12).map((v) => ({
     slug: v.slug,
     name: v.name,
@@ -440,7 +470,10 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
       messages: [
         {
           role: "user",
-          content: `Customer brief: ${JSON.stringify(brief)}\n\nCandidates:\n${JSON.stringify(candidates, null, 1)}`,
+          // The resolved brief, not the raw one: the model is told "6 passengers,
+          // Manual" rather than being left to re-derive it from the sentence
+          // and quietly disagree with the filter applied to its answer.
+          content: `Customer brief: ${JSON.stringify(resolved)}\n\nCandidates:\n${JSON.stringify(candidates, null, 1)}`,
         },
       ],
     });
@@ -457,11 +490,9 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
       .filter((p) => {
         const v = bySlug.get(p.slug);
         if (!v) return false;
-        // Hold the model to the same hard constraints as the rules engine.
-        return (
-          (!brief.passengers || v.seats >= brief.passengers) &&
-          (!brief.transmission || v.transmission === brief.transmission)
-        );
+        // Hold the model to the same hard constraints as the rules engine —
+        // the same function, so the two cannot disagree.
+        return meetsHardConstraints(v, resolved);
       })
       .slice(0, 3)
       .map((p, i) => {
@@ -491,13 +522,14 @@ export async function recommendVehicles(brief: RecommendBrief): Promise<Recommen
 
     return {
       picks,
-      summary: parsed.data.summary || baseline.summary,
+      summary: parsed.data.summary || baselineSummary,
       engine: describeEngine(provider),
       latencyMs: Date.now() - started,
     };
   } catch (err) {
     return {
-      ...baseline,
+      picks: baselinePicks,
+      summary: baselineSummary,
       engine: describeEngine(null),
       latencyMs: Date.now() - started,
       degraded: err instanceof Error ? err.message : "Model call failed; served rules engine.",
