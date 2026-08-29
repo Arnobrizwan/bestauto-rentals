@@ -379,8 +379,19 @@ export const testimonials = pgTable(
     id: text("id").primaryKey(),
     author: text("author").notNull(),
     city: text("city").notNull().default(""),
-    /** Out of five. Half stars are real here — the design shows 4.5. */
-    rating: real("rating").notNull().default(5),
+    /**
+     * Out of five, and stated by whoever publishes it — no default.
+     *
+     * Half stars are real here: the design ships a 4.5. This column briefly
+     * defaulted to 5, which is the same mistake `vehicles.rating` made with
+     * 4.6 and a worse one: a vehicle with no reviews renders as "New", so a
+     * fabricated aggregate never reaches a customer's eye, but the carousel
+     * prints a testimonial's figure directly. A row inserted without one would
+     * have put a perfect five-star score on the home page beside a real
+     * person's name. Every writer — the admin endpoint, the seed and the
+     * backfill — supplies it, so requiring it costs nothing.
+     */
+    rating: real("rating").notNull(),
     body: text("body").notNull(),
     vehicleSlug: text("vehicle_slug"),
     active: boolean("active").notNull().default(true),

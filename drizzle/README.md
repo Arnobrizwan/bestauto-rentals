@@ -16,3 +16,4 @@ migrate`; run `npm run db:push`.
 | --- | --- |
 | `0001_testimonials.sql` | 2026-08-29 |
 | `0002_vehicle_rating_default.sql` | 2026-08-29 |
+| `0003_testimonial_rating_no_default.sql` | 2026-08-29 |
