@@ -49,9 +49,14 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
 
   // A range only means something with both ends, and only forwards. Applying a
   // half-range would silently show the whole catalogue again.
+  //
+  // Deliberately not also requiring the dates to have *changed*: arriving with
+  // a range already in the URL left the button greyed out, which reads as a
+  // broken control rather than as "already applied". Re-applying the same
+  // range is harmless, and a button that looks pressable and is pressable
+  // beats one that has to be earned.
   const complete = Boolean(from && to);
   const ordered = complete && from <= to;
-  const changed = from !== toDateInput(pickup) || to !== toDateInput(dropoff);
 
   const field =
     "h-9 rounded-lg border border-line bg-white px-2.5 text-[13px] text-ink-900 outline-none focus:border-brand-300";
@@ -93,7 +98,7 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
       <button
         type="button"
         onClick={() => apply(from, to)}
-        disabled={!ordered || !changed || pending}
+        disabled={!ordered || pending}
         className={cn(
           // The border is always there, just transparent when enabled, so the
           // button does not change size as it enables.

@@ -87,38 +87,64 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Reveal-on-scroll: elements start hidden and are unhidden by an
-   IntersectionObserver. Anyone who prefers reduced motion just sees them. */
 /*
- * Reveal-on-scroll fails open.
+ * Reveal-on-scroll, in CSS alone.
  *
- * `[data-reveal]` used to start at opacity 0 and rely on JavaScript to turn it
- * on. Every way that script could fail to reach an element — and it found
- * several, from an observer set up before the page subtree existed to a
- * `window.load` listener registered after the event — turned decoration into
- * permanently invisible content: Current deals, What renters say and the
- * contact form rendered, present in the DOM, and blank on screen.
+ * Three JavaScript versions of this each traded one failure for another. An
+ * IntersectionObserver set up before the streamed page subtree existed found
+ * nothing to watch and left every section blank. A `window.load` listener
+ * registered after the event had already fired waited forever. And every
+ * version that wrote an attribute — `data-revealed`, then `data-reveal-armed`
+ * — was reported as a hydration mismatch on each of the twenty elements it
+ * touched, because the layout's effect runs before the page below it has
+ * hydrated and React compares what it finds against what it rendered.
  *
- * So the hidden state is opt-in and applied by the same code that takes
- * responsibility for undoing it. `data-reveal-armed` is set only immediately
- * before an element is handed to the IntersectionObserver. No observer, no
- * arming, no disappearing content — the worst case is now a section that
- * appears without animating.
+ * That last one is not a bug to fix, it is the rule: JavaScript cannot add an
+ * attribute to a server-rendered element without racing hydration. So nothing
+ * does. The animation is driven by the scroll position itself, the markup is
+ * identical on the server and the client, and there is no observer, no
+ * listener, no timer and no component.
+ *
+ * `opacity: 0` lives inside the `@supports` guard, so a browser without
+ * scroll-driven animations (Firefox today) shows every section immediately
+ * rather than hiding content it cannot reveal. Elements already on screen at
+ * load are past their entry range and render at the end state, so the fold is
+ * never blank either.
  */
-[data-reveal][data-reveal-armed] {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+
+    /* The stagger the old delays expressed, as a later slice of the same
+       range — the attributes are already in the server-rendered markup. */
+    [data-reveal][data-reveal-delay="60"],
+    [data-reveal][data-reveal-delay="80"],
+    [data-reveal][data-reveal-delay="90"] {
+      animation-range: entry 8% entry 63%;
+    }
+
+    [data-reveal][data-reveal-delay="180"] {
+      animation-range: entry 16% entry 71%;
+    }
+  }
 }
 
-[data-reveal][data-reveal-armed][data-revealed="true"] {
-  opacity: 1;
-  transform: none;
+@keyframes reveal-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  [data-reveal], [data-reveal][data-reveal-armed] { opacity: 1; transform: none; transition: none; }
+  [data-reveal] { opacity: 1; transform: none; animation: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

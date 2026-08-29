@@ -107,10 +107,14 @@ export function SearchPanel({ locations, className }: { locations: string[]; cla
       },
       (err) => {
         setLocating(false);
+        // A browser will not prompt again once it has been refused, so saying
+        // "denied" and nothing else leaves the visitor pressing a button that
+        // can no longer work. Name where the switch is, and point at the
+        // control that does work.
         setLocateNote(
           err.code === err.PERMISSION_DENIED
-            ? "Location denied — pick a branch below."
-            : "Could not get a location — pick a branch below.",
+            ? "Location is blocked for this site — allow it in your browser's address bar, or just choose a branch."
+            : "Could not read your location — choose a branch instead.",
         );
       },
       { enableHighAccuracy: false, timeout: 8_000, maximumAge: 5 * 60_000 },

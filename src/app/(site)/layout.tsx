@@ -2,7 +2,6 @@ import { Concierge } from "@/components/site/concierge";
 import { SiteFooter } from "@/components/site/footer";
 import { HashScroll } from "@/components/site/hash-scroll";
 import { SiteNav } from "@/components/site/nav";
-import { RevealOnScroll } from "@/components/site/reveal";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,7 +18,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       </main>
       <SiteFooter />
       <Concierge />
-      <RevealOnScroll />
       <HashScroll />
     </div>
   );
