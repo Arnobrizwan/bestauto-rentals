@@ -11,7 +11,13 @@ import { qualifyLead } from "@/ai/agents/lead-qualifier";
 import { recommendVehicles } from "@/ai/agents/recommender";
 import { describeEngine, resolveProvider } from "@/ai/provider";
 
-import { CONCIERGE_CASES, QUALIFIER_CASES, RECOMMENDER_CASES } from "./cases";
+import {
+  CONCIERGE_CASES,
+  HOSTED_PASS_THRESHOLD,
+  QUALIFIER_CASES,
+  RECOMMENDER_CASES,
+  RULES_PASS_THRESHOLD,
+} from "./cases";
 
 /**
  * How much failure is tolerated, and why it depends on the engine.
@@ -26,8 +32,7 @@ import { CONCIERGE_CASES, QUALIFIER_CASES, RECOMMENDER_CASES } from "./cases";
  * matched — scored 96.9% and sailed through a flat 85% gate. Under the rules
  * engine the bar is now every check.
  */
-const HOSTED_PASS_THRESHOLD = 0.85;
-const RULES_PASS_THRESHOLD = 1;
+
 
 type Check = { name: string; passed: boolean; detail: string };
 type CaseResult = { suite: string; id: string; description: string; checks: Check[]; latencyMs: number };

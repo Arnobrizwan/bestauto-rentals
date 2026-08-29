@@ -3,6 +3,13 @@
  * reviewable in a diff and the eval harness can pin the version it scored.
  */
 
+/**
+ * The agents this layer ships. One list so a count rendered in the admin
+ * console cannot go stale — it used to be the literal "4" sitting next to two
+ * figures that were derived, which is the kind of number that stays 4 forever.
+ */
+export const AI_AGENTS = ["concierge", "recommender", "lead qualifier", "operations analyst"] as const;
+
 export const CONCIERGE_SYSTEM_V3 = `You are the booking concierge for Best Auto, a Bangladeshi car rental company based in Dhaka.
 
 Your job is to get someone from "I need a car" to a shortlist they are happy with, and to hand a warm lead to the sales team.

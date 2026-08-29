@@ -5,6 +5,18 @@
  * for both the rules engine and a hosted model. `npm run eval` runs them
  * against whichever engine is configured.
  */
+/**
+ * Pass thresholds for `npm run eval`.
+ *
+ * They live here rather than in `run.ts` because the AI console renders the
+ * gate it is actually held to, and `run.ts` executes the whole harness on
+ * import. The console used to state a flat "85%", which was wrong in the mode
+ * it was reporting on two paragraphs above: with no vendor key every agent is
+ * deterministic, so the gate is 100% and a single failure is a real defect.
+ */
+export const HOSTED_PASS_THRESHOLD = 0.85;
+export const RULES_PASS_THRESHOLD = 1;
+
 export type ConciergeCase = {
   id: string;
   description: string;

@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 
+import { AI_AGENTS } from "@/ai/prompts";
 import { describeEngine, resolveProvider } from "@/ai/provider";
-import { CONCIERGE_CASES, QUALIFIER_CASES, RECOMMENDER_CASES } from "@/ai/evaluation/cases";
+import {
+  CONCIERGE_CASES,
+  HOSTED_PASS_THRESHOLD,
+  QUALIFIER_CASES,
+  RECOMMENDER_CASES,
+  RULES_PASS_THRESHOLD,
+} from "@/ai/evaluation/cases";
 import { TOOL_SPECS } from "@/ai/tools";
 import { KNOWLEDGE } from "@/ai/tools/knowledge";
 import { LeadScorer } from "@/components/admin/lead-scorer";
@@ -20,6 +27,10 @@ export default async function AiConsolePage() {
 
   const scoredLeads = funnel.reduce((sum, f) => sum + f.n, 0);
   const totalCases = CONCIERGE_CASES.length + RECOMMENDER_CASES.length + QUALIFIER_CASES.length;
+  // The gate depends on which engine is answering: a hosted model's wording
+  // varies between runs, the rules engine is deterministic and must be perfect.
+  const threshold = engine.hosted ? HOSTED_PASS_THRESHOLD : RULES_PASS_THRESHOLD;
+  const gate = `${(threshold * 100).toFixed(0)}%${engine.hosted ? "" : " — the rules engine is deterministic"}`;
 
   return (
     <>
@@ -65,7 +76,7 @@ export default async function AiConsolePage() {
 
             <dl className="mt-5 grid grid-cols-3 gap-3">
               {[
-                { label: "Agents", value: "4" },
+                { label: "Agents", value: String(AI_AGENTS.length) },
                 { label: "Tools", value: String(TOOL_SPECS.length) },
                 { label: "Policy docs", value: String(KNOWLEDGE.length) },
               ].map((stat) => (
@@ -86,8 +97,8 @@ export default async function AiConsolePage() {
           <div className="p-5">
             <p className="text-[13px] leading-relaxed text-ink-500">
               {totalCases} golden cases assert behaviour, not wording, so the same suite grades the rules engine and any
-              hosted model. The suite gates on an 85% pass rate and asserts, among other things, that the concierge never
-              quotes a price it did not obtain from a tool.
+              hosted model. It gates at {gate} here and asserts, among other things, that the concierge never quotes a
+              price it did not obtain from a tool.
             </p>
             <ul className="mt-4 space-y-2.5">
               {[
