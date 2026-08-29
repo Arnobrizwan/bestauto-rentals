@@ -16,6 +16,8 @@ export type SessionClaims = {
   email: string;
   name: string;
   role: "admin" | "viewer";
+  /** The account's session version when this token was minted. */
+  ver: number;
   /** unix seconds */
   exp: number;
 };

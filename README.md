@@ -579,11 +579,14 @@ rings, `aria-pressed`/`aria-expanded`/`role="switch"` on stateful controls, and 
 
 Worth stating plainly rather than leaving to be discovered:
 
-- **Single-factor auth, no self-service.** Sessions are stateless signed cookies, which means signing
-  out on one device does not invalidate a session already issued to another before it expires. There
-  is no password reset and no MFA. Staff accounts *are* created from the dashboard now — Team &
-  roles — but a colleague's starting password is typed by the inviting admin and handed over directly,
-  because no email provider is wired up and inventing one would be worse than saying so.
+- **No MFA, and no emailed password reset.** Sessions are still stateless signed cookies — that is
+  what keeps the edge check free of a database round trip — but each carries the account's session
+  version, so changing a password, signing out everywhere, or deactivating an account invalidates
+  tokens already issued rather than waiting out the eight-hour expiry. What is missing is a second
+  factor, and a *self-service* reset for someone who has forgotten their password: that needs a
+  delivery provider, and an admin resetting it from Team & roles is the honest substitute until one
+  exists. Staff accounts are created from the dashboard, with the starting password typed by the
+  inviting admin and handed over directly for the same reason.
 - **Rate limiting is in-process.** Fine for a single region; multi-region needs Redis behind the same
   interface (`src/lib/security/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.

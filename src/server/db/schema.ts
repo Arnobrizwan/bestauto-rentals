@@ -257,6 +257,17 @@ export const adminUsers = pgTable(
     passwordHash: text("password_hash").notNull(),
     role: text("role").notNull().default("admin"),
     active: boolean("active").notNull().default(true),
+    /**
+     * Bumping this invalidates every session already issued to this account.
+     *
+     * Sessions are stateless signed cookies, which is what keeps the edge
+     * check free of a database round trip — but it also meant signing out on
+     * one device left every other device signed in until the cookie expired
+     * eight hours later, and a password change did not lock anyone out at all.
+     * The token carries the version it was minted with and the layout, which
+     * already loads the account, compares them.
+     */
+    sessionVersion: integer("session_version").notNull().default(1),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

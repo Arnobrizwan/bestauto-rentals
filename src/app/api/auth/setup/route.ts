@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     email: user.email,
     name: user.name,
     role: "admin",
+      ver: 1,
   });
 
   const response = ok({ ok: true, next: "/admin" }, { status: 201 });

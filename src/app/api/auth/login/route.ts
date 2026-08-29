@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     email: user.email,
     name: user.name,
     role: user.role === "viewer" ? "viewer" : "admin",
+      ver: user.sessionVersion,
   });
 
   await touchLastLogin(user.id);

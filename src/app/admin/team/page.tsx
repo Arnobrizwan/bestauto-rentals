@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DataTable, Td, Tr } from "@/components/admin/data-table";
+import { AccountSecurity } from "@/components/admin/account-security";
 import { InviteMember } from "@/components/admin/invite-member";
 import { StatRow } from "@/components/admin/stat-row";
 import { PageHeader } from "@/components/admin/table";
@@ -34,6 +35,8 @@ export default async function TeamPage() {
           { label: "Have signed in", value: formatNumber(signedIn) },
         ]}
       />
+
+      <AccountSecurity />
 
       <div className="mb-5">
         <InviteMember />
@@ -73,8 +76,10 @@ export default async function TeamPage() {
 
       <p className="mt-4 text-[13px] text-ink-400">
         Roles are enforced on the server, not in the interface: a viewer holding a valid session still receives a 403
-        from every mutating endpoint. Sessions remain stateless, so deactivating an account takes effect on that
-        person&rsquo;s next page view rather than instantly on every device.
+        from every mutating endpoint. Sessions are stateless signed cookies, which keeps the edge check free of a
+        database round trip, but each one carries the account&rsquo;s session version — so deactivating an account,
+        changing a password or signing out everywhere invalidates tokens already issued instead of waiting out the
+        eight-hour expiry.
       </p>
     </>
   );

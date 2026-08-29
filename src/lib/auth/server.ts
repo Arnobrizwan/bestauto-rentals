@@ -23,6 +23,11 @@ export async function getCurrentAdmin() {
   const user = await findAdminById(claims.sub);
   if (!user || !user.active) return null;
 
+  // A token minted before the account's version was bumped is dead, which is
+  // how "sign out everywhere" and a password change take effect immediately
+  // rather than waiting out the cookie's eight hours.
+  if ((claims.ver ?? 0) !== user.sessionVersion) return null;
+
   return { id: user.id, email: user.email, name: user.name, role: user.role as SessionClaims["role"] };
 }
 

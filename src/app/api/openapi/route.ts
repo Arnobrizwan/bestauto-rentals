@@ -206,6 +206,20 @@ export async function GET(req: Request) {
           responses: { "200": { description: "Session cookie issued" }, "401": errorResponse, "429": { description: "Rate limited" } },
         },
       },
+      "/api/auth/password": {
+        post: {
+          summary: "Change your own password",
+          description:
+            "Requires the current password, so a borrowed session cannot lock the owner out. Succeeding invalidates every session already issued to the account and re-issues a cookie to the caller.",
+          responses: { "200": { description: "Changed" }, "401": errorResponse, "403": errorResponse, "422": errorResponse },
+        },
+        delete: {
+          summary: "Sign out everywhere, this device included",
+          description:
+            "The cookie is stateless, so there is nothing to delete on another device — bumping the account's session version is what stops every issued token verifying.",
+          responses: { "200": { description: "Revoked" }, "401": errorResponse },
+        },
+      },
       "/api/auth/logout": {
         post: { summary: "Sign out and clear the session cookie", responses: { "200": { description: "Signed out" } } },
       },

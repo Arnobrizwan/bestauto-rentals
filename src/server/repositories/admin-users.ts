@@ -110,3 +110,23 @@ export async function setAdminActive(id: string, active: boolean) {
     .returning({ id: adminUsers.id, active: adminUsers.active });
   return row ?? null;
 }
+
+/** Invalidates every session already issued to an account. */
+export async function bumpSessionVersion(id: string) {
+  const [row] = await db
+    .update(adminUsers)
+    .set({ sessionVersion: sql`${adminUsers.sessionVersion} + 1` })
+    .where(eq(adminUsers.id, id))
+    .returning({ version: adminUsers.sessionVersion });
+  return row?.version ?? null;
+}
+
+/** Changes a password and invalidates existing sessions in one statement. */
+export async function updatePassword(id: string, passwordHash: string) {
+  const [row] = await db
+    .update(adminUsers)
+    .set({ passwordHash, sessionVersion: sql`${adminUsers.sessionVersion} + 1` })
+    .where(eq(adminUsers.id, id))
+    .returning({ id: adminUsers.id, version: adminUsers.sessionVersion });
+  return row ?? null;
+}
