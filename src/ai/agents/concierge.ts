@@ -2,6 +2,7 @@ import { describeEngine, resolveProviderForRequest, type AiMessage, type Content
 import { CONCIERGE_SYSTEM_V3 } from "@/ai/prompts";
 import { EXTRA_PRICES, TOOL_SPECS, durationDiscount, executeTool, type ToolContext } from "@/ai/tools";
 import { searchKnowledge } from "@/ai/tools/knowledge";
+import { BRANCHES } from "@/lib/taxonomy";
 import { formatCurrency } from "@/lib/utils";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -59,19 +60,15 @@ export type Slots = {
   vehicleSlug?: string;
 };
 
-const LOCATIONS = [
-  "Dhaka Gulshan",
-  "Dhaka Banani",
-  "Dhaka Uttara",
-  "Dhaka Dhanmondi",
-  "Dhaka Motijheel",
-  "Hazrat Shahjalal Airport",
-  "Chattogram Agrabad",
-  "Sylhet City",
-  "Khulna City",
-  "Rajshahi City",
-  "Cox's Bazar",
-];
+/**
+ * The branches, from the one list that defines them.
+ *
+ * This was a verbatim copy of `BRANCHES`, so adding a branch to the fleet left
+ * the assistant unable to recognise a place the rest of the site already
+ * offered — the customer would name their own branch and be told nothing was
+ * there.
+ */
+const LOCATIONS = BRANCHES;
 
 /** Ordered longest-first at lookup time so "corolla axio" beats "corolla". */
 const VEHICLE_ALIASES: Record<string, string> = {

@@ -47,10 +47,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
   try {
     const result = await setBookingStatus(reference, body.data.status);
 
-    // The booking's own page is force-dynamic, but the fleet pages are cached
-    // and a released unit changes what they show.
+    // The car's own page too — it is the page a customer books from, and it
+    // carries the scarcity badge. Revalidating only the listing left the
+    // detail page claiming "Last one available" for up to five minutes after
+    // the unit came back.
     revalidatePath("/");
     revalidatePath("/cars");
+    revalidatePath(`/cars/${result.slug}`);
 
     log.info("booking.status", { reference, status: body.data.status, released: result.released });
     return ok({

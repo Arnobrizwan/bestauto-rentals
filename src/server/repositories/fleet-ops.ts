@@ -352,9 +352,11 @@ export async function setMaintenanceStatus(jobId: string, status: "open" | "in-p
       status: maintenanceJobs.status,
       unitId: maintenanceJobs.unitId,
       vehicleId: vehicleUnits.vehicleId,
+      vehicleSlug: vehicles.slug,
     })
     .from(maintenanceJobs)
     .innerJoin(vehicleUnits, eq(vehicleUnits.id, maintenanceJobs.unitId))
+    .innerJoin(vehicles, eq(vehicles.id, vehicleUnits.vehicleId))
     .where(eq(maintenanceJobs.id, jobId))
     .limit(1);
 
@@ -385,5 +387,5 @@ export async function setMaintenanceStatus(jobId: string, status: "open" | "in-p
       .where(eq(vehicles.id, job.vehicleId));
   }
 
-  return { jobId, status, stockMoved: wasOffRoad !== nowOffRoad, vehicleId: job.vehicleId };
+  return { jobId, status, stockMoved: wasOffRoad !== nowOffRoad, vehicleId: job.vehicleId, slug: job.vehicleSlug };
 }

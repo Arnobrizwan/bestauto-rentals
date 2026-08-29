@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql, type SQL } from "drizzle-orm";
 
+import { BRANCHES } from "@/lib/taxonomy";
 import { db } from "@/server/db/client";
 import { bookings, vehicles, type Vehicle } from "@/server/db/schema";
 
@@ -142,19 +143,8 @@ export async function getVehiclesByIds(ids: string[]) {
  * A customer can collect any car from any branch, so the filter and the search
  * panel must offer all of them.
  */
-export const BRANCHES = [
-  "Dhaka Gulshan",
-  "Dhaka Banani",
-  "Dhaka Uttara",
-  "Dhaka Dhanmondi",
-  "Dhaka Motijheel",
-  "Hazrat Shahjalal Airport",
-  "Chattogram Agrabad",
-  "Sylhet City",
-  "Khulna City",
-  "Rajshahi City",
-  "Cox's Bazar",
-] as const;
+/** Re-exported from the shared vocabulary so existing imports keep working. */
+export { BRANCHES };
 
 export async function listFacets() {
   const rows = await db.select().from(vehicles);

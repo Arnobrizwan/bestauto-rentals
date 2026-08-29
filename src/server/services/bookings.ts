@@ -235,7 +235,7 @@ export async function setBookingStatus(reference: string, status: "pending" | "s
   if (!row) throw new BookingError("Booking not found.", 404);
 
   const was = row.booking.status;
-  if (was === status) return { booking: row.booking, automation: null, released: false };
+  if (was === status) return { booking: row.booking, automation: null, released: false, slug: row.vehicle.slug };
 
   if (status === "cancelled") {
     const result = await cancelBooking(row.booking.id, {
@@ -246,7 +246,7 @@ export async function setBookingStatus(reference: string, status: "pending" | "s
     });
     // Give the unit back, once, and only when leaving a state that held one.
     if (was !== "cancelled") await adjustAvailability(row.booking.vehicleId, 1);
-    return { booking: result.booking, automation: result.automation, released: true };
+    return { booking: result.booking, automation: result.automation, released: true, slug: row.vehicle.slug };
   }
 
   const updated = await updateBookingStatus(row.booking.id, status);
@@ -256,5 +256,5 @@ export async function setBookingStatus(reference: string, status: "pending" | "s
   const retaken = was === "cancelled";
   if (retaken) await adjustAvailability(row.booking.vehicleId, -1);
 
-  return { booking: updated, automation: null, released: false, retaken };
+  return { booking: updated, automation: null, released: false, retaken, slug: row.vehicle.slug };
 }

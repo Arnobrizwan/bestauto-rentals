@@ -31,8 +31,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!result) return fail(404, "Maintenance job not found.");
 
   if (result.stockMoved) {
+    // The car's own page as well — putting a car back on the road changes what
+    // its detail page says about availability, and that is the page a customer
+    // books from.
     revalidatePath("/");
     revalidatePath("/cars");
+    revalidatePath(`/cars/${result.slug}`);
   }
 
   log.info("maintenance.status", { id, status: result.status, stockMoved: result.stockMoved });

@@ -68,3 +68,27 @@ export function isAllowedImageUrl(value: string) {
     return false;
   }
 }
+
+/**
+ * Every branch, in one place.
+ *
+ * This list lived in `server/repositories/vehicles.ts` and was duplicated
+ * verbatim inside the concierge as `LOCATIONS`, so adding a branch meant
+ * editing two files — and forgetting the second one left the assistant unable
+ * to recognise a branch the rest of the site was already offering. It sits
+ * here, next to the other closed vocabularies, because this module imports
+ * nothing and both the database layer and the AI layer can read it.
+ */
+export const BRANCHES = [
+  "Dhaka Gulshan",
+  "Dhaka Banani",
+  "Dhaka Uttara",
+  "Dhaka Dhanmondi",
+  "Dhaka Motijheel",
+  "Hazrat Shahjalal Airport",
+  "Chattogram Agrabad",
+  "Sylhet City",
+  "Khulna City",
+  "Rajshahi City",
+  "Cox's Bazar",
+] as const;
