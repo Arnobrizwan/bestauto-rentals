@@ -770,6 +770,67 @@ async function hostedConcierge(
   }
 
   const slots = extractSlots(turns);
+
+  /*
+   * Guardrail: a rental brief must never be answered without looking.
+   *
+   * The intent classifier only ever governed the rules engine, which is not
+   * the path that runs in production. Left to itself the hosted model chatted
+   * through under-specified briefs — "Something cheap for city driving" and
+   * "A 7-seater for a family holiday" both came back with no tool call and no
+   * cars, every time — and once asserted that nothing was listed at the
+   * airport when a Land Cruiser Prado is. A confident negative about our own
+   * fleet is the worst answer available, and it costs nothing to check.
+   *
+   * So the classifier now sits over both engines: if the turn reads as a
+   * search and the model did not run one, the search is run anyway and the
+   * model is asked once more with the real rows in hand. Its prose then
+   * matches the cards beside it instead of contradicting them.
+   */
+  const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
+  const searched = toolCalls.some((call) => call.name === "search_vehicles");
+
+  if (!searched && classifyIntent(lastUser, slots) === "search") {
+    const { cards, raw } = await search(slots, 3);
+    toolCalls.push({ name: "search_vehicles", input: { ...slots, forced: true }, output: raw });
+
+    for (const card of cards) {
+      if (!vehicles.some((existing) => existing.slug === card.slug)) vehicles.push(card);
+    }
+
+    // Re-prompt with the result as an observation rather than a fabricated
+    // tool_use block: every provider adapter accepts a plain turn, and none of
+    // them have to be trusted to pair an id they never issued.
+    messages.push({ role: "assistant", content: text || "(no answer yet)" });
+    messages.push({
+      role: "user",
+      content: cards.length
+        ? `[system] A vehicle search was run with the details given so far and returned these cars from the live fleet:\n${JSON.stringify(cards, null, 1)}\n\nAnswer the customer using these cars. Do not say nothing is available, and do not invent a car that is not in this list. Keep it to two or three sentences.`
+        : `[system] A vehicle search was run with the details given so far and matched nothing in the fleet. Say so briefly and ask the one question most likely to widen it — budget, party size or branch.`,
+    });
+
+    try {
+      // The earlier answer was written without looking, so whatever reached
+      // the screen is withdrawn before the corrected one is streamed.
+      sink?.onReset();
+      const request = { system: CONCIERGE_SYSTEM_V3, messages, maxTokens: 500, temperature: 0.3 };
+      if (sink && provider.stream) {
+        const iterator = provider.stream(request);
+        let step = await iterator.next();
+        while (!step.done) {
+          sink.onDelta(step.value.delta);
+          step = await iterator.next();
+        }
+        text = step.value.text || text;
+      } else {
+        text = (await provider.complete(request)).text || text;
+      }
+    } catch {
+      // The cards are already correct; a failed rewrite must not lose them.
+      if (cards.length) text = `Here is what fits so far — ${listCars(cards)}.`;
+    }
+  }
+
   return {
     message: text || "I'm not sure I follow — could you say that another way?",
     vehicles: vehicles.slice(0, 3),

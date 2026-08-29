@@ -24,7 +24,18 @@ const OPENER: Message = {
   role: "assistant",
   content:
     "Hello — I look after bookings at Best Auto. Tell me who's travelling, roughly when, and what you'd like to spend a day, and I'll pull up the right cars.",
-  suggestions: ["Something cheap for city driving", "A 7-seater for a family holiday", "What's the insurance excess?"],
+  // Fully specified on purpose. "Something cheap for city driving" and "A
+  // 7-seater for a family holiday" name no branch, no party size and no
+  // duration, and the hosted model answered both with prose and no search —
+  // so the first thing anyone opening the widget clicked returned zero cars.
+  // A chip is a demo of the product, not a test of the model's willingness to
+  // guess. The guardrail in the agent now forces a search on either wording;
+  // these give it real slots to search with as well.
+  suggestions: [
+    "A cheap automatic in Dhaka for 3 days",
+    "A 7-seater for 6 people going to Cox's Bazar",
+    "What's the insurance excess?",
+  ],
 };
 
 function newSessionId() {
