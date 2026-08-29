@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { fail, guard, ok, readJson } from "@/lib/security/http";
@@ -53,6 +54,24 @@ export async function POST(req: Request) {
 
   try {
     const result = await createBooking(body.data);
+
+    /*
+     * A booking moves stock, so the cached pages have to be told.
+     *
+     * Creating a booking fires `booking.created`, whose automation rule
+     * decrements `unitsAvailable` — the stock really does drop. Nothing
+     * revalidated, though, and the home page and every car page are cached for
+     * five minutes, so for up to five minutes a car could read "Last one
+     * available" on its own page while the listing already showed it gone.
+     * The home page says "Live availability, checked on every answer" directly
+     * above that stale number.
+     *
+     * Vehicle creation was the only call site of `revalidatePath` in the
+     * codebase. This is the other write that changes what a visitor sees.
+     */
+    revalidatePath("/");
+    revalidatePath("/cars");
+    revalidatePath(`/cars/${result.vehicle.slug}`);
     return ok(
       {
         reference: result.booking.reference,

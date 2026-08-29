@@ -112,7 +112,15 @@ export default async function VehiclesPage({ searchParams }: { searchParams: Sea
                               {v.name}
                             </Link>
                             <span className="block text-[12px] text-ink-400">
-                              {v.year} · {v.location}
+                              {v.year} · {v.location} ·{" "}
+                              {/* The fleet was add-only; this is where a wrong
+                                  price or a retired car gets corrected. */}
+                              <Link
+                                href={`/admin/fleet/${v.slug}/edit`}
+                                className="font-semibold text-brand-500 hover:underline"
+                              >
+                                Edit
+                              </Link>
                             </span>
                           </span>
                         </span>

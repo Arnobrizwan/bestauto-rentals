@@ -46,3 +46,25 @@ export const PAYMENT_METHODS = [
 export type Segment = (typeof SEGMENTS)[number];
 export type Transmission = (typeof TRANSMISSIONS)[number];
 export type Fuel = (typeof FUELS)[number];
+
+/**
+ * Image hosts `next/image` and the CSP will actually load.
+ *
+ * The create endpoint accepted any https URL while `next.config.ts` allows one
+ * remote pattern and the CSP's `img-src` allows the same single host — so a
+ * dealer photo or a Google image URL passed validation, went live on the home
+ * page and the fleet, and rendered as a broken image. Keep this in step with
+ * `next.config.ts`; it is the same list, enforced at the point of entry rather
+ * than discovered by a customer.
+ */
+export const ALLOWED_IMAGE_HOSTS = ["images.unsplash.com"] as const;
+
+/** Is this a URL the site can actually render? */
+export function isAllowedImageUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && ALLOWED_IMAGE_HOSTS.includes(url.hostname as (typeof ALLOWED_IMAGE_HOSTS)[number]);
+  } catch {
+    return false;
+  }
+}

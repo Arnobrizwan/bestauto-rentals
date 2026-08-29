@@ -189,3 +189,39 @@ export async function insertVehicle(row: typeof vehicles.$inferInsert) {
   const [created] = await db.insert(vehicles).values(row).onConflictDoNothing().returning();
   return created ?? null;
 }
+
+/**
+ * Edits a vehicle in place.
+ *
+ * The fleet was add-only: `/api/vehicles/[slug]` exported GET and nothing
+ * else, so a typo in a name or a wrong daily rate was permanent and public,
+ * and a car could never be retired. Only the columns supplied are written, so
+ * a partial edit cannot blank the fields it did not mention.
+ */
+export async function updateVehicle(slug: string, patch: Partial<typeof vehicles.$inferInsert>) {
+  const [row] = await db.update(vehicles).set(patch).where(eq(vehicles.slug, slug)).returning();
+  return row ?? null;
+}
+
+/**
+ * Retires a vehicle.
+ *
+ * Refused while any booking still references it, rather than cascading: a
+ * booking whose vehicle has vanished cannot be priced, invoiced or handed
+ * over, and the customer's confirmation page would break. Taking the units to
+ * zero is the way to stop new bookings on a car with history.
+ */
+export async function deleteVehicle(slug: string) {
+  const vehicle = await getVehicleBySlug(slug);
+  if (!vehicle) return { ok: false as const, reason: "not-found" as const };
+
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(bookings)
+    .where(eq(bookings.vehicleId, vehicle.id));
+
+  if (n > 0) return { ok: false as const, reason: "has-bookings" as const, bookings: n };
+
+  await db.delete(vehicles).where(eq(vehicles.slug, slug));
+  return { ok: true as const, name: vehicle.name };
+}

@@ -147,9 +147,11 @@ export default async function VehiclePage({ params }: { params: Params }) {
                     <svg viewBox="0 0 24 24" className="size-4 text-brand-400" fill="currentColor">
                       <path d="m12 3 2.6 5.6 6 .8-4.4 4.2 1.1 6L12 16.8 6.7 19.6l1.1-6L3.4 9.4l6-.8z" />
                     </svg>
-                    {vehicle.rating.toFixed(1)}
+                    {vehicle.reviewCount > 0 ? vehicle.rating.toFixed(1) : "New"}
                   </span>
-                  <span className="text-ink-400">({vehicle.reviewCount} reviews)</span>
+                  <span className="text-ink-400">
+                    {vehicle.reviewCount > 0 ? `(${vehicle.reviewCount} reviews)` : "(no reviews yet)"}
+                  </span>
                 </p>
               </div>
               <p className="font-display text-2xl font-bold text-brand-500">

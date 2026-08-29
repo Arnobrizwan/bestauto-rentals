@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/server";
 import { log } from "@/lib/observability/logger";
 import { fail, guard, ok, readJson, sanitizeText } from "@/lib/security/http";
-import { FUELS, SEGMENTS, TRANSMISSIONS } from "@/lib/taxonomy";
+import { ALLOWED_IMAGE_HOSTS, FUELS, SEGMENTS, TRANSMISSIONS, isAllowedImageUrl } from "@/lib/taxonomy";
 import { insertVehicle, listVehicles } from "@/server/repositories/vehicles";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +62,14 @@ const createSchema = z.object({
   bags: z.coerce.number().int().min(0).max(12),
   pricePerDay: z.coerce.number().min(0).max(1_000_000),
   costPerDay: z.coerce.number().min(0).max(1_000_000),
-  imageUrl: z.string().url().max(400),
+    // Restricted to the hosts next/image and the CSP can load. Any other
+  // https URL passed validation and then rendered as a broken image on the
+  // public site, with no way to correct it before the edit endpoint existed.
+  imageUrl: z
+    .string()
+    .url()
+    .max(400)
+    .refine(isAllowedImageUrl, `Image must be hosted on ${ALLOWED_IMAGE_HOSTS.join(", ")}.`),
   location: z.string().min(2).max(120),
   unitsTotal: z.coerce.number().int().min(1).max(200),
   description: z.string().max(1200).optional(),
@@ -114,6 +121,11 @@ export async function POST(req: Request) {
     unitsAvailable: input.unitsTotal,
     description: input.description ? sanitizeText(input.description, 1200) : "",
     features: [],
+    // A car added ten seconds ago has no rating, and the schema default of 4.6
+    // put four and a half stars on the public page for a review nobody wrote.
+    // Zero with zero reviews is the truth; the card shows "New" for it.
+    rating: 0,
+    reviewCount: 0,
   });
 
   if (!created) return fail(409, "A vehicle with that name already exists.");

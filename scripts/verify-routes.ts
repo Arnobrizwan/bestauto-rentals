@@ -49,6 +49,11 @@ const adminPages = walk(join(APP, "admin")).map((file) => {
 
 const linked = new Set(NAV_HREFS);
 for (const page of adminPages) {
+  // A dynamic route cannot be a sidebar entry — /admin/fleet/[slug]/edit is
+  // reached from the row of the car it edits, not from the nav. The rule this
+  // check exists for is "no admin page is orphaned from the nav", and a
+  // parameterised page has no single href to put there.
+  if (page.includes("[")) continue;
   if (!linked.has(page)) {
     failures += 1;
     console.error(`  FAIL  ${page} exists but nothing in the sidebar links to it`);

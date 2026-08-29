@@ -201,7 +201,10 @@ export function VehicleCard({
             <svg viewBox="0 0 24 24" className="size-3 text-brand-400" fill="currentColor">
               <path d="m12 3 2.6 5.6 6 .8-4.4 4.2 1.1 6L12 16.8 6.7 19.6l1.1-6L3.4 9.4l6-.8z" />
             </svg>
-            {vehicle.rating.toFixed(1)}
+            {/* "New" rather than a star rating nobody gave it — a car added
+                a minute ago has no reviews, and printing a score for one is
+                inventing customer feedback. */}
+            {vehicle.reviewCount > 0 ? vehicle.rating.toFixed(1) : "New"}
           </span>
         </div>
       </Link>

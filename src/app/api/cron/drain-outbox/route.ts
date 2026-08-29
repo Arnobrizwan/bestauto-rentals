@@ -54,15 +54,25 @@ async function sendEmail(message: { recipient: string; subject: string; body: st
 /**
  * Attempts delivery of one message.
  *
- * With no provider configured this is a no-op that reports success, which is
- * the honest representation of "queued and nothing to send it with" — the
- * message is not lost, and the moment a key appears the same drain starts
- * delivering. Slack and email genuinely deliver once their credential is set.
+ * A missing credential is a failure, not a success.
+ *
+ * Every channel used to return `{ delivered: true }` when it had nothing to
+ * send with, so the drain flipped the row to `sent` and the operations screen
+ * said the customer had been told. Nobody had been told: real booking
+ * confirmations sat marked as delivered having never left the building, and
+ * SMS reported delivery for a vendor that does not exist anywhere in this
+ * codebase. A silent false "sent" is worse than a visible failure, because it
+ * removes the only signal that anything is wrong.
+ *
+ * Now an unconfigured channel throws. The message keeps its place in the
+ * queue, backs off, and after six attempts is marked `dead` with the reason in
+ * `lastError` — so the Automations page shows the truth, and adding the key
+ * makes the same drain deliver it.
  */
 async function deliver(message: { channel: string; recipient: string; subject: string; body: string }) {
   if (message.channel === "slack") {
     const url = process.env.SLACK_WEBHOOK_URL;
-    if (!url) return { delivered: true, detail: "no Slack webhook configured" };
+    if (!url) throw new Error("No Slack webhook configured — set SLACK_WEBHOOK_URL.");
     const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -75,15 +85,17 @@ async function deliver(message: { channel: string; recipient: string; subject: s
 
   if (message.channel === "email") {
     const apiKey = process.env.RESEND_API_KEY?.trim();
-    if (!apiKey) return { delivered: true, detail: "no email provider configured" };
+    if (!apiKey) throw new Error("No email provider configured — set RESEND_API_KEY.");
     return sendEmail(message, apiKey);
   }
 
+  // No SMS vendor exists anywhere in this codebase. Reporting delivery for a
+  // channel that has never sent anything is the same lie as above, louder.
   if (message.channel === "sms") {
-    return { delivered: true, detail: "no SMS provider configured" };
+    throw new Error("No SMS provider configured — nothing can send this.");
   }
 
-  return { delivered: true, detail: `no provider for channel "${message.channel}"` };
+  throw new Error(`No provider for channel "${message.channel}".`);
 }
 
 /**
