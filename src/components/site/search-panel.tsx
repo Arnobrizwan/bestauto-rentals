@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useSyncExternalStore } from "react";
 
+import { nearestBranch } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
 const TIMES = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "16:00", "18:00", "20:00"];
@@ -77,6 +78,44 @@ export function SearchPanel({ locations, className }: { locations: string[]; cla
   const [dropoffDate, setDropoffDate] = useState(isoIn(6));
   const [dropoffTime, setDropoffTime] = useState("10:00");
   const [error, setError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<string | null>(null);
+
+  /**
+   * Ask the browser where we are and pick the nearest branch.
+   *
+   * Sets both ends, because the overwhelming case is collecting and returning
+   * at the same branch — and the drop-off is one click away if not. Every
+   * failure is reported rather than swallowed: a visitor who taps this and
+   * sees nothing happen has no way to know whether it worked.
+   */
+  function locate() {
+    if (!("geolocation" in navigator)) {
+      setLocateNote("This browser cannot share a location.");
+      return;
+    }
+
+    setLocating(true);
+    setLocateNote(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const branch = nearestBranch(position.coords.latitude, position.coords.longitude, locations);
+        setPickupLocation(branch);
+        setDropoffLocation(branch);
+        setLocating(false);
+        setLocateNote(`Nearest branch: ${branch}`);
+      },
+      (err) => {
+        setLocating(false);
+        setLocateNote(
+          err.code === err.PERMISSION_DENIED
+            ? "Location denied — pick a branch below."
+            : "Could not get a location — pick a branch below.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 8_000, maximumAge: 5 * 60_000 },
+    );
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -110,9 +149,31 @@ export function SearchPanel({ locations, className }: { locations: string[]; cla
       <div className="grid gap-px bg-line lg:grid-cols-[1fr_1fr_auto]">
         {/* Pick-up */}
         <div className="bg-white">
-          <div className="flex items-center gap-2 px-5 pt-4">
+          <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
             <span className="grid size-4 place-items-center rounded-full border-[3px] border-brand-400" />
             <span className="text-[13px] font-semibold text-ink-900">Pick - Up</span>
+
+            {/*
+              The IP city can only ever answer "Dhaka", and five of our
+              branches are in Dhaka — so someone standing in Uttara was opened
+              on Gulshan. This asks the browser for a real fix and picks the
+              branch nearest to it. Opt-in on purpose: a permission prompt
+              nobody asked for is worse than a sensible default, so the
+              preselected branch is already usable and this only sharpens it.
+            */}
+            <button
+              type="button"
+              onClick={locate}
+              disabled={locating}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[12px] font-medium text-ink-500 transition-colors hover:border-ink-300 hover:text-ink-900 disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 text-brand-400" fill="none" stroke="currentColor" strokeWidth="1.9">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
+              </svg>
+              {locating ? "Locating…" : "Use my location"}
+            </button>
+            {locateNote && <span className="text-[12px] text-ink-400">{locateNote}</span>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3">
             <div className={cell}>

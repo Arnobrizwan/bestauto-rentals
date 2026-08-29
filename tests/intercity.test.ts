@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { DEFAULT_BRANCH, branchForRequest } from "../src/lib/geo";
+import { BRANCH_COORDS, DEFAULT_BRANCH, branchForRequest, nearestBranch } from "../src/lib/geo";
 import {
   DAILY_KM_ALLOWANCE,
   DRIVER_NIGHT_ALLOWANCE,
@@ -181,5 +181,41 @@ describe("branch for the request's city", () => {
     // Someone booking from London wants a car in Dhaka, not a branch near them.
     assert.equal(branchForRequest("London", "GB"), DEFAULT_BRANCH);
     assert.equal(branchForRequest("Dubai", "AE"), DEFAULT_BRANCH);
+  });
+});
+
+describe("nearest branch to a precise position", () => {
+  it("picks the right side of Dhaka, which the IP city never could", () => {
+    // Standing in Uttara. City-level geo says "Dhaka" and opens on Gulshan,
+    // 11km south; a real fix picks the branch you can actually walk to.
+    assert.equal(nearestBranch(23.8759, 90.3795), "Dhaka Uttara");
+    assert.equal(nearestBranch(23.7461, 90.3742), "Dhaka Dhanmondi");
+    assert.equal(nearestBranch(23.7331, 90.4172), "Dhaka Motijheel");
+  });
+
+  it("picks the right city from far away", () => {
+    assert.equal(nearestBranch(22.3269, 91.8123), "Chattogram Agrabad");
+    assert.equal(nearestBranch(24.8949, 91.8687), "Sylhet City");
+    assert.equal(nearestBranch(21.4272, 92.0058), "Cox's Bazar");
+  });
+
+  it("never offers a branch the page is not showing", () => {
+    const shown = ["Dhaka Gulshan", "Sylhet City"];
+    // Physically nearest is Chattogram Agrabad, which is not on the list.
+    assert.equal(nearestBranch(22.3269, 91.8123, shown), "Dhaka Gulshan");
+    assert.ok(shown.includes(nearestBranch(24.3745, 88.6042, shown)));
+  });
+
+  it("falls back rather than throwing when nothing is available", () => {
+    assert.equal(nearestBranch(23.8, 90.4, []), DEFAULT_BRANCH);
+  });
+
+  it("has coordinates for every branch the fleet uses", () => {
+    // A branch without a position would silently never be chosen.
+    for (const branch of Object.keys(BRANCH_COORDS)) {
+      const { lat, lon } = BRANCH_COORDS[branch];
+      assert.ok(lat > 20 && lat < 27, `${branch} latitude is not in Bangladesh`);
+      assert.ok(lon > 88 && lon < 93, `${branch} longitude is not in Bangladesh`);
+    }
   });
 });
