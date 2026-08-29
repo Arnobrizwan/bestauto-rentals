@@ -138,7 +138,7 @@ flowchart LR
 Below, the matcher is asked for ten people going to Cox's Bazar and returns the only vehicle in the
 fleet that can actually carry them.
 
-![AI vehicle matcher](docs/media/ai-feature.gif)
+![AI vehicle matcher](docs/media/ai-matcher.gif)
 
 ### 6. Automation workflow
 
