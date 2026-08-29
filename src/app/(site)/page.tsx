@@ -96,9 +96,13 @@ export default async function HomePage() {
                 accident rather than a stack. They share the row instead and
                 only stop stretching once there is space for them to sit at
                 their natural width.
+
+                Both labels are nowrap for the same reason one row down: once
+                the buttons share a 390px row each is narrow enough that
+                "Booking Now" broke across two lines inside its own pill.
               */}
               <div className="mt-9 flex items-center gap-3">
-                <ButtonLink href="/cars" size="lg" className="flex-1 justify-center sm:flex-none">
+                <ButtonLink href="/cars" size="lg" className="flex-1 justify-center whitespace-nowrap sm:flex-none">
                   Booking Now
                 </ButtonLink>
                 <ButtonLink
