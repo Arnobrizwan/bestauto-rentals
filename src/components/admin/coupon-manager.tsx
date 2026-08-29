@@ -90,7 +90,9 @@ export function CouponManager() {
           </Field>
 
           <Field label="Value" className={field} hint="Percent must be 100 or less.">
-            <Input name="value" type="number" min={1} step={1} required defaultValue={10} />
+            {/* "any", so a 7.5% offer is possible. The endpoint is the authority
+                on the range — percent at most 100, always positive. */}
+            <Input name="value" type="number" min={0} step="any" required defaultValue={10} />
           </Field>
 
           <Field label="Minimum days" className={field}>

@@ -151,11 +151,11 @@ export function VehicleEditForm({
         </Field>
 
         <Field label="Price per day (৳)">
-          <Input name="pricePerDay" type="number" min={0} step={100} defaultValue={vehicle.pricePerDay} />
+          <Input name="pricePerDay" type="number" min={0} step={1} defaultValue={vehicle.pricePerDay} />
         </Field>
 
         <Field label="Cost per day (৳)" hint="Margin on the dashboard is derived from this.">
-          <Input name="costPerDay" type="number" min={0} step={100} defaultValue={vehicle.costPerDay} />
+          <Input name="costPerDay" type="number" min={0} step={1} defaultValue={vehicle.costPerDay} />
         </Field>
 
         <Field label="Units total">

@@ -117,10 +117,16 @@ export function VehicleForm({ branches, bodyTypes }: { branches: readonly string
         </Field>
 
         <Field label="Price per day (৳)" hint="What the customer pays, with a driver.">
-          <Input name="pricePerDay" type="number" required min={0} step={100} defaultValue={5000} />
+          {/* step={1}, not step={100}. A step the value does not land on is
+              rejected by the browser with "the two nearest valid values are
+              5500 and 5600" — so a perfectly ordinary rate of 5,550 could not
+              be typed, and the message blamed the operator for a rule nobody
+              chose. The endpoint validates the range; the input should not
+              invent a granularity on top of it. */}
+          <Input name="pricePerDay" type="number" required min={0} step={1} defaultValue={5000} />
         </Field>
         <Field label="Cost per day (৳)" hint="Drives every margin figure on the dashboard.">
-          <Input name="costPerDay" type="number" required min={0} step={100} defaultValue={2200} />
+          <Input name="costPerDay" type="number" required min={0} step={1} defaultValue={2200} />
         </Field>
         <Field label="Units">
           <Input name="unitsTotal" type="number" required min={1} max={200} defaultValue={4} />

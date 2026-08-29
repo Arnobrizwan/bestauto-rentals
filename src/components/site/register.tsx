@@ -196,7 +196,12 @@ export function RegisterSection() {
                     <input
                       type="number"
                       min={0}
-                      step={500}
+                      // Not step={500}. The browser refuses any value off the
+                      // step and explains itself with "the two nearest valid
+                      // values are 8500 and 9000" — so a customer typing a
+                      // real budget of 8,700 was blocked from a public form by
+                      // a rule nobody chose and nothing needs.
+                      step={1}
                       value={form.budgetPerDay}
                       onChange={set("budgetPerDay")}
                       placeholder="6000"
