@@ -37,7 +37,18 @@ export const vehicles = pgTable(
     imageUrl: text("image_url").notNull(),
     accentFrom: text("accent_from").notNull().default("#ff9f43"),
     accentTo: text("accent_to").notNull().default("#f5871f"),
-    rating: real("rating").notNull().default(4.6),
+    /**
+     * No stars until somebody gives one.
+     *
+     * The default was 4.6, so a car inserted directly — a future seed, a
+     * one-off SQL fix, a backfill — arrived on the public fleet advertising a
+     * rating for reviews nobody had written. The create endpoint sets 0
+     * explicitly, which made the API path safe and left the column wrong,
+     * which is the harder version of the bug: nothing in the code you read
+     * looks incorrect. Public surfaces already show "New" while reviewCount
+     * is 0, so zero is the honest starting point rather than a gap.
+     */
+    rating: real("rating").notNull().default(0),
     reviewCount: integer("review_count").notNull().default(0),
     location: text("location").notNull(),
     features: jsonb("features").$type<string[]>().notNull().default([]),
