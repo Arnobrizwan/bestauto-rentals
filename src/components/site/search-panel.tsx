@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,16 +16,64 @@ function isoIn(days: number) {
  * Submitting pushes the criteria into /cars as query params so the result page
  * is linkable and server-rendered.
  */
+/**
+ * The branch the proxy worked out for this request.
+ *
+ * Read through `useSyncExternalStore` rather than in a `useState` initialiser
+ * because the home page is prerendered: the server has no cookie, the client
+ * does, and reading it during the first client render would be a hydration
+ * mismatch on the select's value. The server snapshot is the plain default, so
+ * the markup matches, and React re-renders with the real branch immediately
+ * after. Same pattern the favourites store on the vehicle card uses.
+ */
+function readBranchCookie() {
+  const match = document.cookie.match(/(?:^|;\s*)bestauto_branch=([^;]*)/);
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return "";
+  }
+}
+
+let branchSnapshot = "";
+function subscribeBranch(onStoreChange: () => void) {
+  // The cookie is written by the proxy before the document loads and never
+  // changes while the page is open, so there is no event to listen for — but
+  // React holds the *server* snapshot through hydration and only re-reads when
+  // the store says it changed. One notification on the next tick is what swaps
+  // the placeholder for the visitor's real branch. Without it the value is
+  // read once, during hydration, and the geo default silently never applies.
+  const timer = window.setTimeout(onStoreChange, 0);
+  return () => window.clearTimeout(timer);
+}
+function getBranchSnapshot() {
+  const next = readBranchCookie();
+  if (next !== branchSnapshot) branchSnapshot = next;
+  return branchSnapshot;
+}
+const getBranchServerSnapshot = () => "";
+
 export function SearchPanel({ locations, className }: { locations: string[]; className?: string }) {
   const router = useRouter();
   const id = useId();
-  // Prefer a Dhaka branch as the default - it is the busiest by a wide margin
-  // and reads better than whatever happens to sort first alphabetically.
-  const defaultLocation = locations.find((l) => l.startsWith("Dhaka")) ?? locations[0] ?? "";
-  const [pickupLocation, setPickupLocation] = useState(defaultLocation);
+  // The visitor's own city first, then a Dhaka branch — it is the busiest by a
+  // wide margin and reads better than whatever happens to sort first
+  // alphabetically. A branch is only adopted if it is one we actually run.
+  const nearby = useSyncExternalStore(subscribeBranch, getBranchSnapshot, getBranchServerSnapshot);
+  const fallback = locations.find((l) => l.startsWith("Dhaka")) ?? locations[0] ?? "";
+  const defaultLocation = nearby && locations.includes(nearby) ? nearby : fallback;
+  // `null` means "not touched yet", so the geo default can arrive after
+  // hydration without an effect writing state, and a visitor who has picked a
+  // branch is never overridden by it.
+  const [chosenPickup, setChosenPickup] = useState<string | null>(null);
+  const pickupLocation = chosenPickup ?? defaultLocation;
+  const setPickupLocation = setChosenPickup;
   const [pickupDate, setPickupDate] = useState(isoIn(3));
   const [pickupTime, setPickupTime] = useState("10:00");
-  const [dropoffLocation, setDropoffLocation] = useState(defaultLocation);
+  const [chosenDropoff, setChosenDropoff] = useState<string | null>(null);
+  const dropoffLocation = chosenDropoff ?? defaultLocation;
+  const setDropoffLocation = setChosenDropoff;
   const [dropoffDate, setDropoffDate] = useState(isoIn(6));
   const [dropoffTime, setDropoffTime] = useState("10:00");
   const [error, setError] = useState<string | null>(null);

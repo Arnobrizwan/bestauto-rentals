@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { BookingForm } from "@/components/site/booking-form";
 import { VehicleCard, type VehicleCardData } from "@/components/site/vehicle-card";
 import { Badge } from "@/components/ui";
+import { DRIVER_NIGHT_ALLOWANCE, cityOfBranch, intercityQuotesFrom } from "@/lib/intercity";
 import { formatCurrency } from "@/lib/utils";
 import { getVehicleBySlug, listFacets, listVehicles } from "@/server/repositories/vehicles";
 
@@ -211,6 +212,60 @@ export default async function VehiclePage({ params }: { params: Params }) {
                   <dd className="text-ink-400">Billed at actual cost with pump receipts, on top of the daily rate.</dd>
                 </div>
               </dl>
+            </section>
+
+            {/*
+              The fixed intercity rates the policy has always promised.
+              "Dhaka to Cox's Bazar, Sylhet or Chattogram each have a fixed
+              round-trip rate" was in the corpus with no rate anywhere in the
+              codebase behind it, so the assistant repeated the promise and
+              then had to ask people to call. Each figure is this car's own day
+              rate against the published 120km allowance, so it cannot drift
+              away from the price printed at the top of the page.
+            */}
+            <section className="mt-12">
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-ink-900">
+                Fixed intercity round trips
+              </h2>
+              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-400">
+                Return trips from {cityOfBranch(vehicle.location)} in this car, driver included. Each is priced on the
+                120km a day your hire covers, plus {formatCurrency(DRIVER_NIGHT_ALLOWANCE)} a night for the
+                driver&apos;s food and accommodation. Fuel and tolls are billed at cost.
+              </p>
+
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left">
+                  <thead>
+                    <tr className="border-b border-line text-[13px] text-ink-400">
+                      <th className="pb-3 font-medium">Destination</th>
+                      <th className="pb-3 font-medium">Return distance</th>
+                      <th className="pb-3 font-medium">Billed as</th>
+                      <th className="pb-3 text-right font-medium">Fixed rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {intercityQuotesFrom(Number(vehicle.pricePerDay), cityOfBranch(vehicle.location)).map((q) => (
+                      <tr key={q.to}>
+                        <td className="py-3.5">
+                          <span className="font-display text-[15px] font-semibold text-ink-900">{q.to}</span>
+                          {q.note && <span className="block text-[12px] text-ink-400">{q.note}</span>}
+                        </td>
+                        <td className="py-3.5 text-[14px] text-ink-500">
+                          {q.roundTripKm} km
+                          {q.estimated && <span className="ml-1 text-ink-300">approx.</span>}
+                        </td>
+                        <td className="py-3.5 text-[14px] text-ink-500">
+                          {q.billableDays} days
+                          {q.nights > 0 ? ` · ${q.nights} nights` : ""}
+                        </td>
+                        <td className="py-3.5 text-right font-display text-[15px] font-bold text-ink-900">
+                          {formatCurrency(q.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
 
