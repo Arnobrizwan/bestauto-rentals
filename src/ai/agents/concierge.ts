@@ -245,15 +245,31 @@ export function classifyIntent(message: string, slots: Slots): Intent {
   if (/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/.test(message)) return "contact";
   if (/\b(book it|reserve|i'?ll take|go ahead|sign me up|yes please book)\b/.test(text)) return "contact";
 
+  // Anything that is plainly a request to be shown the fleet. It outranks a
+  // stray policy keyword: "what do you have with good mileage" is someone
+  // browsing, not asking about mileage policy, and answering it with the
+  // policy note was a dead end.
+  const isBrowsing = /\b(what do you have|what have you got|show me|options|recommend|suggest|anything (?:else|good)|what.s available)\b/.test(text);
+
   // Policy is checked before pricing: "how much deposit do you take" and "is
   // the driver included in the price" are policy questions that happen to
   // contain pricing words. A named vehicle with a duration is a real quote
   // request, so that still wins.
   const hasDuration = /\b\d+\s*(?:days?|nights?|weeks?)\b/.test(text);
-  if (POLICY_HINT.test(text) && !(NAMES_VEHICLE.test(text) && hasDuration)) return "policy";
+  if (POLICY_HINT.test(text) && !isBrowsing && !(NAMES_VEHICLE.test(text) && hasDuration)) return "policy";
 
-  if (/\b(how much|price|cost|quote|total|rate|per day|charge|taka|tk|৳|\bfee\b)\b/.test(text)) return "quote";
-  if (/\b(available|availability|free on|in stock|can i get|do you have.*(on|for)\s)\b/.test(text)) return "availability";
+  // A quote needs something to quote. "budget around 6000 taka a day" trips
+  // the pricing words but names no car, so the quote path had nothing to
+  // price and answered with a question instead of the fleet — while the
+  // stated budget is exactly the signal the prompt says should trigger a
+  // search. Without a vehicle in play, a priced enquiry is a search.
+  const hasVehicle = Boolean(slots.vehicleSlug) || NAMES_VEHICLE.test(text);
+  if (/\b(how much|price|cost|quote|total|rate|per day|charge|taka|tk|৳|\bfee\b)\b/.test(text)) {
+    return hasVehicle ? "quote" : "search";
+  }
+  if (/\b(available|availability|free on|in stock|can i get|do you have.*(on|for)\s)\b/.test(text)) {
+    return hasVehicle ? "availability" : "search";
+  }
 
   if (
     /\b(car|vehicle|suv|hatchback|sedan|coupe|convertible|seater|drive|rent|hire|need|looking for|recommend|suggest|show me|options)\b/.test(
@@ -263,9 +279,17 @@ export function classifyIntent(message: string, slots: Slots): Intent {
     return "search";
   }
 
-  if (slots.passengers || slots.budgetPerDay || slots.segment) return "search";
+  if (isBrowsing) return "search";
 
-  // Anything with no rental vocabulary at all.
+  // Any slot at all is rental intent. Only passengers, budget and segment used
+  // to count, so "something cheap for getting around Dhaka" — which sets a
+  // location and nothing else — fell through to the out-of-scope guard below
+  // and was answered as an unrelated request. A stated branch, date, duration
+  // or preference is a customer describing a hire, not small talk.
+  const hasSlot = Object.values(slots).some((v) => v !== undefined && v !== "");
+  if (hasSlot) return "search";
+
+  // Anything with no rental vocabulary and no slot at all.
   if (text.length > 12 && !/\b(car|rent|hire|drive|book|price|day)\b/.test(text)) return "out_of_scope";
 
   return "unknown";
