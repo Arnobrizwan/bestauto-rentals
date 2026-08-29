@@ -40,6 +40,36 @@ describe("normaliseMetric", () => {
     assert.equal(normaliseMetric(31, "Total bookings"), "31 bookings");
   });
 
+  it("does not label a percentage as a count", () => {
+    // Captured from a real model response. The detail mentions "bookings", so
+    // a first-match-wins keyword list rendered a 10% cancellation rate as
+    // "10 bookings" — confidently wrong, which is worse than unlabelled.
+    assert.equal(
+      normaliseMetric("10", "Cancellations above tolerance. 10% of bookings in this window cancelled."),
+      "10% cancelled",
+    );
+    assert.equal(
+      normaliseMetric("2", "Concierge is converting. 2 bookings came through the AI concierge."),
+      "2 bookings",
+    );
+    assert.equal(
+      normaliseMetric("4.408602150537634", "Idle capacity. The small segment is at 4.4% utilisation."),
+      "4.4% utilisation",
+    );
+  });
+
+  it("reads the percent sign from the number's own context", () => {
+    // No noun the unit table knows, but the text shows the figure as a
+    // percentage, so it must not be rendered as a bare count.
+    assert.equal(normaliseMetric("62", "Fleet readiness sits at 62% across the branches."), "62%");
+  });
+
+  it("adds no unit when nothing in the text supports one", () => {
+    // Defaulting to "%" was the same confident-guess bug in the other
+    // direction. An unlabelled number is honest; a wrong label is not.
+    assert.equal(normaliseMetric(7, "Something with no known noun"), "7");
+  });
+
   it("leaves a string that is already a display value alone", () => {
     assert.equal(normaliseMetric("+53.6% revenue", "Revenue up"), "+53.6% revenue");
     assert.equal(normaliseMetric("4% utilisation", "utilisation"), "4% utilisation");
