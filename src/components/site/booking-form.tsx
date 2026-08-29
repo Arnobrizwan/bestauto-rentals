@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { EXTRA_PRICES, ONE_OFF_EXTRAS, durationDiscount, extraTotal } from "@/lib/pricing";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toDateInput } from "@/lib/utils";
 
 const EXTRA_NOTES: Record<string, string> = {
   "Full insurance": "Takes your liability to zero",
@@ -50,9 +50,32 @@ type Props = {
  */
 export function BookingForm({ slug, name, pricePerDay, locations, defaultLocation }: Props) {
   const router = useRouter();
-  const [pickupAt, setPickupAt] = useState(isoIn(3));
-  const [dropoffAt, setDropoffAt] = useState(isoIn(6));
-  const [pickupLocation, setPickupLocation] = useState(defaultLocation);
+  const params = useSearchParams();
+
+  /*
+   * Start from what the customer already told us.
+   *
+   * This form defaulted to three days from today at the branch the car sits
+   * in, ignoring the search that got them here — so someone who searched 1–4
+   * September at Dhaka Banani, filtered the fleet on those dates and opened a
+   * car was quoted for a different hire than the one they asked for, with no
+   * indication their choice had been dropped. The fleet cards forward the
+   * search; this reads it, and falls back to the old defaults when there is
+   * none (arriving from the home page deals, or a shared link).
+   */
+  const searchedPickup = toDateInput(params.get("pickup"));
+  const searchedDropoff = toDateInput(params.get("dropoff"));
+  const searchedLocation = params.get("location");
+  const usable = searchedPickup && searchedDropoff && searchedPickup <= searchedDropoff;
+
+  const [pickupAt, setPickupAt] = useState(usable ? searchedPickup : isoIn(3));
+  const [dropoffAt, setDropoffAt] = useState(usable ? searchedDropoff : isoIn(6));
+  // Only a branch this car is actually at — the search may name a city or a
+  // branch the vehicle is not parked in, and offering a pick-up point it
+  // cannot be collected from would be worse than ignoring the hint.
+  const [pickupLocation, setPickupLocation] = useState(
+    searchedLocation && locations.includes(searchedLocation) ? searchedLocation : defaultLocation,
+  );
   const [extras, setExtras] = useState<string[]>([]);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);

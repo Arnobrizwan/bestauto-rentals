@@ -94,3 +94,16 @@ export const percent = (value: number, digits = 0) => `${value.toFixed(digits)}%
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
+
+/**
+ * The `yyyy-MM-dd` half of a date value, or "" if there isn't one.
+ *
+ * The home page search collects a time and puts `2026-09-01T10:00` in the URL.
+ * `<input type="date">` accepts only a bare date and silently renders empty for
+ * anything else, so every control that shows a searched date has to narrow it
+ * first. Shared so the fleet filter and the booking form cannot disagree about
+ * what the same query parameter means.
+ */
+export function toDateInput(value: string | null | undefined) {
+  return value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : "";
+}

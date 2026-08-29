@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn, toDateInput } from "@/lib/utils";
 
 /**
  * The pick-up and drop-off dates, on the fleet page.
@@ -19,17 +19,6 @@ import { cn } from "@/lib/utils";
  * query now takes the range, and this is the control that sets it.
  */
 
-/**
- * The date part of whatever the URL carries.
- *
- * The home page search submits a datetime — `2026-09-01T10:00`, because it
- * collects a time as well — and `<input type="date">` accepts only a bare
- * `yyyy-MM-dd`. Handed anything else it silently renders empty, so arriving
- * from a home page search showed two blank `dd/mm/yyyy` fields above a caption
- * saying the results were filtered to those very dates.
- */
-const dateOf = (value?: string) => (value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : "");
-
 /** The `T10:00` half, so editing a date does not quietly discard the time. */
 const timeOf = (value?: string) => (value && value.length > 10 ? value.slice(10) : "");
 export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?: string }) {
@@ -38,8 +27,8 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const [from, setFrom] = useState(dateOf(pickup));
-  const [to, setTo] = useState(dateOf(dropoff));
+  const [from, setFrom] = useState(toDateInput(pickup));
+  const [to, setTo] = useState(toDateInput(dropoff));
 
   // The URL is the source of truth. When it changes underneath these inputs —
   // the back button, a filter reset elsewhere on the page — the caller keys
@@ -62,7 +51,7 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
   // half-range would silently show the whole catalogue again.
   const complete = Boolean(from && to);
   const ordered = complete && from <= to;
-  const changed = from !== dateOf(pickup) || to !== dateOf(dropoff);
+  const changed = from !== toDateInput(pickup) || to !== toDateInput(dropoff);
 
   const field =
     "h-9 rounded-lg border border-line bg-white px-2.5 text-[13px] text-ink-900 outline-none focus:border-brand-300";

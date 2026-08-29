@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { cn, formatCurrency } from "@/lib/utils";
@@ -119,6 +120,26 @@ export function VehicleCard({
 }) {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const favourite = parse(raw).includes(vehicle.slug);
+  const params = useSearchParams();
+
+  /*
+   * Carry the search across the hop into the car.
+   *
+   * A customer who searched 1–4 September at Dhaka Banani, browsed the fleet
+   * and opened a car used to land on a booking form defaulted to three days
+   * from today at the branch the car happens to sit in — their dates dropped
+   * silently at the last step, and the price they were quoted was for a
+   * different hire than the one they asked for. The card link forwards what
+   * they chose; the booking form reads it. On the home page, where there is no
+   * search, nothing is appended and the link stays clean.
+   */
+  const carried = new URLSearchParams();
+  for (const key of ["pickup", "dropoff", "location"]) {
+    const value = params.get(key);
+    if (value) carried.set(key, value);
+  }
+  const query = carried.toString();
+  const href = query ? `/cars/${vehicle.slug}?${query}` : `/cars/${vehicle.slug}`;
 
   const toggleFavourite = useCallback(() => {
     const current = parse(readRaw());
@@ -161,7 +182,7 @@ export function VehicleCard({
         </button>
       </div>
 
-      <Link href={`/cars/${vehicle.slug}`} className="mt-4 block px-5" tabIndex={-1} aria-hidden>
+      <Link href={href} className="mt-4 block px-5" tabIndex={-1} aria-hidden>
         <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-ink-50">
           <Image
             src={vehicle.imageUrl}
@@ -198,7 +219,7 @@ export function VehicleCard({
           <span className="ml-0.5 text-[13px] font-medium text-ink-400">/ day</span>
         </p>
         <Link
-          href={`/cars/${vehicle.slug}`}
+          href={href}
           className="inline-flex h-10 items-center rounded-full border border-ink-200 px-5 text-sm font-semibold text-ink-900 transition-all group-hover:border-brand-400 group-hover:bg-brand-400 group-hover:text-white"
         >
           Rent Now
