@@ -50,7 +50,14 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // `geolocation=(self)`, not `()`. The empty allowlist denies the
+          // API to everyone including this origin, so "Use my location" was
+          // rejected by the browser before any permission prompt could appear
+          // — the visitor saw it fail with no way to grant anything, and the
+          // console said only "disabled by permissions policy". `self` lets
+          // this origin ask; the visitor still has to agree, and camera and
+          // microphone stay denied outright because nothing here needs them.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
         ],
       },
     ];

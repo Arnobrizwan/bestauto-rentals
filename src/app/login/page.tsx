@@ -61,8 +61,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </div>
         </div>
 
-        <p className="mt-6 text-center text-[13px] text-ink-400">
-          Looking to rent a car?{" "}
+        <p className="mt-6 text-center text-[13px]">
           <Link href="/" className="font-semibold text-brand-500 hover:underline">
             Back to the site
           </Link>
