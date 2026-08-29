@@ -259,6 +259,10 @@ export function AdminTopbar({
         <Link
           href="/admin/leads"
           aria-label={`${notifications} hot leads waiting`}
+          // Says what the number is on hover, not just to a screen reader —
+          // a bare red count invites "19 what?", and it is the kind of badge
+          // people expect to clear as they work, which it now does.
+          title={notifications > 0 ? `${notifications} hot leads not yet contacted` : "No hot leads waiting"}
           className="relative grid size-9 place-items-center rounded-lg border border-line text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900"
         >
           <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6">

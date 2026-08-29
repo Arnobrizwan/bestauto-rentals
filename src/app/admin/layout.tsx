@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AdminShell } from "@/components/admin/shell";
 import { getCurrentAdmin } from "@/lib/auth/server";
-import { getLeadFunnel } from "@/server/repositories/leads";
+import { countUnactionedHotLeads } from "@/server/repositories/leads";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +21,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await getCurrentAdmin();
   if (!user) redirect("/login?next=/admin&stale=1");
 
-  const funnel = await getLeadFunnel().catch(() => []);
-  const hotLeads = funnel.find((f) => f.tier === "hot")?.n ?? 0;
+  // Hot leads still waiting on someone, not every lead ever scored hot — the
+  // badge has to fall when the work is done, or it is not a badge.
+  const hotLeads = await countUnactionedHotLeads().catch(() => 0);
 
   return (
     <AdminShell hotLeads={hotLeads} user={user}>

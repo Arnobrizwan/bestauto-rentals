@@ -52,6 +52,27 @@ export async function getLeadFunnel() {
   return rows.map((r) => ({ ...r, avgScore: Number(r.avgScore) }));
 }
 
+/**
+ * Hot leads nobody has picked up yet — the number on the sidebar badge.
+ *
+ * The badge used to count every lead scored `hot`, and a lead's tier is what
+ * the model decided when it arrived: it does not move when someone calls the
+ * customer. So a red "19" sat there permanently, in the one place on the
+ * screen that means "these need you", and no amount of work would ever change
+ * it. A count that cannot fall is decoration wearing a to-do list's clothes.
+ *
+ * Scoping it to `status = 'new'` makes it the outstanding work it looked like:
+ * marking a lead contacted, qualified, converted or lost takes it off the
+ * badge, which is exactly what an operator expects from clearing one.
+ */
+export async function countUnactionedHotLeads() {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(leads)
+    .where(and(eq(leads.tier, "hot"), eq(leads.status, "new")));
+  return row?.n ?? 0;
+}
+
 export async function updateLeadStatus(id: string, status: string) {
   const [row] = await db.update(leads).set({ status }).where(eq(leads.id, id)).returning();
   return row ?? null;
