@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
 
+import { planOutboxRetry } from "@/automation/outbox";
 import { db } from "@/server/db/client";
 import { automationRules, automationRuns, events, outbox } from "@/server/db/schema";
 
@@ -92,23 +93,20 @@ export async function markOutboxDelivered(id: string) {
 /**
  * Records a failed attempt and schedules the next one.
  *
- * Exponential backoff so a provider having a bad minute is not hammered, and a
- * terminal `dead` state so a permanently undeliverable message stops consuming
- * attempts forever and becomes visible as a failure rather than a silent
- * retry loop.
+ * The policy itself — backoff curve, ceiling, and when a message dies — is
+ * `planOutboxRetry`, a pure function that can be tested without a database.
+ * This function only writes down what it decided.
  */
 export async function markOutboxFailed(id: string, attempts: number, error: string, maxAttempts: number) {
-  const next = attempts + 1;
-  const dead = next >= maxAttempts;
-  const backoffMs = Math.min(60 * 60_000, 2 ** next * 30_000);
+  const plan = planOutboxRetry(attempts, error, maxAttempts);
   await db
     .update(outbox)
     .set({
-      attempts: next,
-      lastError: error.slice(0, 500),
-      status: dead ? "dead" : "queued",
-      nextAttemptAt: new Date(Date.now() + backoffMs),
+      attempts: plan.attempts,
+      lastError: plan.lastError,
+      status: plan.status,
+      nextAttemptAt: new Date(Date.now() + plan.backoffMs),
     })
     .where(eq(outbox.id, id));
-  return { dead, attempts: next };
+  return { dead: plan.dead, attempts: plan.attempts };
 }
