@@ -74,6 +74,7 @@ npm run dev         # sign in at /login with the account /setup created
 | `npm run lint` | ESLint incl. the React Compiler rules |
 | `npm run db:push` / `db:seed` / `db:reset` | Schema and data |
 | `npm run db:backfill` | Additive counterpart to the seed — fills only the fleet-operations tables, and only when empty, so it is safe against a live database |
+| `npm test` | Unit tests over the pure logic — pricing, automation, model-output validation, sessions, the outbox state machine and the concierge slot parser. 77 tests, no database |
 | `npm run test:routes` | Asserts every sidebar link resolves and every admin page is linked |
 | `npm run test:qr` | Golden test for the QR encoder |
 | `npm run eval` | **AI evaluation suite** — 65 assertions; every one must pass on the rules engine, 85% when a hosted model answers |
@@ -91,7 +92,8 @@ npm run dev         # sign in at /login with the account /setup created
 | `OPENAI_BASE_URL` | no | Full chat-completions URL. Points the OpenAI adapter at any compatible provider — the live deployment uses Alibaba DashScope |
 | `ANTHROPIC_MODEL` / `OPENAI_MODEL` | no | Override the default model id |
 | `SLACK_WEBHOOK_URL` | no | Makes `notify_slack` actions deliver for real |
-| `RESEND_API_KEY` | no | Marks queued email as sent |
+| `RESEND_API_KEY` | no | Sends outbox email through Resend for real. Absent, email stays queued and the drain says so |
+| `RESEND_FROM` | no | Sender for outbox email. Defaults to Resend's shared sandbox address; set it to an address on a domain you have verified |
 | `SESSION_SECRET` | **in production** | 32+ char secret signing admin session cookies. The app refuses to start a production session without it |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_NAME` / `SEED_ADMIN_PASSWORD` | no | Provision an admin non-interactively. All three are required together; with any missing the seed creates no account and the first visit to `/setup` does it instead |
 | `CRON_SECRET` | no | Required as `Bearer` on the scheduled endpoint when set |
@@ -164,7 +166,7 @@ resolves to a page, and every admin page is reachable from the sidebar. No 404s.
 `.github/workflows/ci.yml` runs on every push and pull request.
 
 ```
-QR goldens  →  sidebar + OpenAPI route coverage  →  types  →  lint  →  build
+QR goldens  →  sidebar + OpenAPI route coverage  →  unit tests  →  types  →  lint  →  build
             →  seed the review branch  →  AI evaluation suite
 ```
 
@@ -186,6 +188,20 @@ presence of `DATABASE_URL` — decides whether the seeded steps run.
 Deployment is Vercel's Git integration. The workflow also carries an explicit deploy job for when
 that is switched off; it stays inert unless `VERCEL_TOKEN` is configured, rather than failing every
 run on a fork.
+
+### What the unit tests cover
+
+`node:test`, no test framework, no database — 77 tests over the logic where a mistake is silent.
+They were written where bugs had actually been found, not where coverage was easiest:
+
+| File | Guards |
+|---|---|
+| `tests/pricing.test.ts` | The money path: discounts apply to the base and never to extras, a part day counts as a whole one, a flat coupon cannot drive a total negative |
+| `tests/automation.test.ts` | Condition evaluation and template rendering for the rules engine |
+| `tests/ai-validation.test.ts` | What a model hands back. Feeds a literal model response — raw floats, fenced JSON, a bad `severity`, insights as a string — through the real parse path and asserts the chips the dashboard would render |
+| `tests/session.test.ts` | The cookie: a fresh token verifies, an expired one does not, a tampered payload does not, and a token minted before a `sessionVersion` bump is dead. Plus password round-trip, wrong password, malformed stored hash |
+| `tests/outbox.test.ts` | The delivery state machine: backoff doubles, is capped at an hour, and a message dies exactly at the sixth attempt — not the fifth, not the seventh |
+| `tests/concierge-slots.test.ts` | The slot parser, pinning two shipped bugs: "budget" read as a request for a small car, and "9,000 taka" read as a budget of 0 |
 
 ---
 
@@ -351,13 +367,20 @@ oldest-first behind `CRON_SECRET`: delivered messages are marked sent with a
 timestamp, a failure backs off exponentially, and a message that cannot be delivered after six
 attempts is marked `dead` rather than retried forever. The engine's comment always described the
 outbox as the delivery boundary "so a failing vendor never loses the message" — but nothing drained
-it and nothing retried, so that was an intention rather than a guarantee. It also wrote `sent` as
-soon as `RESEND_API_KEY` was present even though no code has ever called Resend, which claimed a
-delivery that had not happened; marking a message sent is now the drainer's job. Wiring a real vendor
-is a change in one function and nowhere else, which is the point of the boundary. The schedule is
-daily because Vercel's Hobby plan rejects a sub-daily cron expression at deploy time rather than
-quietly running it less often, so the dashboard can also drain on demand; on Pro it would be
-every half hour.
+it and nothing retried, so that was an intention rather than a guarantee.
+
+**Email and Slack deliver for real.** Slack posts to `SLACK_WEBHOOK_URL`; email posts to the Resend
+API with a ten-second timeout, and any non-2xx throws so the vendor's own words land in `lastError`
+and the message is retried rather than lost. This branch previously returned "delivered" the moment
+`RESEND_API_KEY` was present, with a comment admitting the vendor call was not implemented — which
+meant the day a key was added every message would be marked sent without leaving the building. SMS
+still has no provider and says so honestly: the message stays queued, and nothing claims otherwise.
+
+The retry policy — the backoff curve, its one-hour ceiling, and the attempt at which a message dies
+— is `planOutboxRetry` in `src/automation/outbox.ts`, a pure function the repository applies, so the
+state machine is tested directly rather than through a database. The schedule is daily because
+Vercel's Hobby plan rejects a sub-daily cron expression at deploy time rather than quietly running
+it less often, so the dashboard can also drain on demand; on Pro it would be every half hour.
 
 **Shipped rules:** hot-lead escalation, warm-lead nurture, cold-lead digest, booking confirmation,
 high-value booking review (>৳50,000 opens an NID verification task), cancellation recovery, concierge handoff,
@@ -472,6 +495,12 @@ the AI concierge, and get identical scoring and automation from both.
 
 ### Details worth a look
 
+- **Two "bookings" totals that disagreed now say which is which.** The KPI tile counts confirmed
+  bookings, because that is what revenue is earned on; the status donut counts every row, because a
+  breakdown that excluded pending and cancelled would have nothing to break down. Both are right for
+  what they feed and both are over the same range, but an unqualified "total" next to a different
+  unqualified "total" reads as a bug — so the tile says *Confirmed*, the donut says *all statuses*,
+  and the tile's drill-through carries `status=success` to match the figure it was reached from.
 - **The world map ships as path data, not a library.** `scripts/build-world-map.mts` projects a
   TopoJSON atlas with `d3-geo` at build time and emits plain SVG path strings, rounded to 1dp. No
   mapping library or topojson parser reaches the browser.
@@ -613,7 +642,9 @@ Worth stating plainly rather than leaving to be discovered:
   it. Swapping the shared tier for Redis is a change behind one function
   (`src/server/repositories/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
-- **Email and SMS queue to an outbox.** Delivery is a config change, not a code change.
+- **SMS queues to an outbox with no provider behind it.** Email and Slack deliver for real once
+  their credential is set; SMS is a config change *and* one vendor function away, and the drain
+  reports it as undelivered rather than pretending otherwise.
 
 
 ---
