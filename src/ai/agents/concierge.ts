@@ -41,7 +41,7 @@ const MAX_TOOL_ITERATIONS = 4;
  * against it so an adjective can never filter a large group down to a fleet
  * that cannot carry them.
  */
-const SMALL_SEGMENT_MAX_SEATS = 5;
+export const SMALL_SEGMENT_MAX_SEATS = 5;
 
 export type Slots = {
   passengers?: number;
@@ -125,11 +125,22 @@ export function extractSlots(turns: ChatTurn[], previous: Slots = {}): Slots {
   // Only fall back to a nominal family size if no count was stated anywhere.
   if (/\bfamily\b/.test(text) && !slots.passengers) slots.passengers = 5;
 
+  // "9,000" and "9000" are the same amount. Matching only bare digits meant
+  // the grouped form was read three characters in: "9,000 taka per day" became
+  // a budget of 0, which filtered the fleet to nothing at all. The grouped
+  // alternative is tried first so it wins over the bare-digit one, and the
+  // separators are stripped before the number is read.
+  const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d{3,6})`;
   const budget =
-    /(?:৳|\btk\.?\s*|\bbdt\s*)(\d{3,6})/i.exec(userText)?.[1] ??
-    /(\d{3,6})\s*(?:taka|tk|bdt)?\s*(?:a|per|\/)\s*day/i.exec(userText)?.[1] ??
-    /(?:under|below|max(?:imum)?|up to|around|about)\s*(?:৳|tk\.?\s*)?\s*(\d{3,6})/i.exec(userText)?.[1];
-  if (budget) slots.budgetPerDay = Number(budget);
+    new RegExp(String.raw`(?:৳|\btk\.?\s*|\bbdt\s*)${AMOUNT}`, "i").exec(userText)?.[1] ??
+    new RegExp(String.raw`${AMOUNT}\s*(?:taka|tk|bdt)?\s*(?:a|per|/)\s*day`, "i").exec(userText)?.[1] ??
+    // "budget" is a lead-in like "under" or "up to". It is *not* a size signal
+    // — see the segment rules below.
+    new RegExp(
+      String.raw`(?:under|below|max(?:imum)?|up to|around|about|budget(?:\s+(?:of|is))?)\s*(?:৳|tk\.?\s*)?\s*${AMOUNT}`,
+      "i",
+    ).exec(userText)?.[1];
+  if (budget) slots.budgetPerDay = Number(budget.replace(/,/g, ""));
 
   const days = /(\d+)\s*(?:days?|nights?)/i.exec(userText)?.[1];
   if (days) slots.days = Math.min(90, Number(days));

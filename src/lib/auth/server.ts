@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { fail } from "@/lib/security/http";
 import { findAdminById } from "@/server/repositories/admin-users";
 
-import { SESSION_COOKIE, readSessionToken, type SessionClaims } from "./session";
+import { SESSION_COOKIE, isSessionCurrent, readSessionToken, type SessionClaims } from "./session";
 
 /** Reads and verifies the session cookie. Signature only — no database hit. */
 export async function getSessionClaims(): Promise<SessionClaims | null> {
@@ -21,12 +21,12 @@ export async function getCurrentAdmin() {
   if (!claims) return null;
 
   const user = await findAdminById(claims.sub);
-  if (!user || !user.active) return null;
+  if (!user) return null;
 
-  // A token minted before the account's version was bumped is dead, which is
-  // how "sign out everywhere" and a password change take effect immediately
-  // rather than waiting out the cookie's eight hours.
-  if ((claims.ver ?? 0) !== user.sessionVersion) return null;
+  // Deactivated, or holding a token minted before the account's version was
+  // bumped — which is how "sign out everywhere" and a password change take
+  // effect immediately rather than waiting out the cookie's eight hours.
+  if (!isSessionCurrent(claims, user)) return null;
 
   return { id: user.id, email: user.email, name: user.name, role: user.role as SessionClaims["role"] };
 }

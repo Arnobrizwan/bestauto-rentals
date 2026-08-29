@@ -144,6 +144,35 @@ const insightsResponseSchema = z.object({
   insights: z.array(insightSchema).min(1),
 });
 
+/**
+ * Turns raw model text into insights, or throws.
+ *
+ * Exported so the repair can be tested against a literal model response
+ * without a hosted model or a database in the way — the acceptance case is
+ * "the model sent a raw float, the dashboard must not render one".
+ *
+ * safeParse, not a cast: a cast asserts the shape, it does not check it. A
+ * failure throws, and the only caller lets that reach the same catch a vendor
+ * outage takes — the rules-engine baseline is served and `degraded` says why,
+ * so a malformed response degrades rather than reaching the page.
+ */
+export function parseInsightsResponse(text: string): Insight[] {
+  const parsed = insightsResponseSchema.safeParse(JSON.parse(stripFences(text)));
+  if (!parsed.success) {
+    throw new Error(`Model response failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
+  }
+
+  return parsed.data.insights.slice(0, 4).map((insight) => ({
+    title: insight.title,
+    detail: insight.detail,
+    severity: insight.severity,
+    // The chip the dashboard renders. Everything the model sent passes
+    // through here, so a raw float becomes "+53.6% revenue" instead of
+    // "53.6015004126".
+    metric: normaliseMetric(insight.metric, `${insight.title} ${insight.detail}`),
+  }));
+}
+
 export async function generateInsights(snapshot: OpsSnapshot): Promise<InsightResult> {
   const started = Date.now();
   const baseline = rulesInsights(snapshot);
@@ -159,24 +188,8 @@ export async function generateInsights(snapshot: OpsSnapshot): Promise<InsightRe
       temperature: 0.2,
       messages: [{ role: "user", content: `Metrics:\n${JSON.stringify(snapshot, null, 1)}` }],
     });
-    // safeParse, not a cast: a cast asserts the shape, it does not check it.
-    // A failure throws into the catch below, which is the same path a vendor
-    // outage takes — the rules-engine baseline is served and `degraded` says
-    // why, so a malformed response degrades rather than reaching the page.
-    const parsed = insightsResponseSchema.safeParse(JSON.parse(stripFences(res.text)));
-    if (!parsed.success) {
-      throw new Error(`Model response failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
-    }
-
-    const insights: Insight[] = parsed.data.insights.slice(0, 4).map((insight) => ({
-      title: insight.title,
-      detail: insight.detail,
-      severity: insight.severity,
-      // The chip the dashboard renders. Everything the model sent passes
-      // through here, so a raw float becomes "+53.6% revenue" instead of
-      // "53.6015004126".
-      metric: normaliseMetric(insight.metric, `${insight.title} ${insight.detail}`),
-    }));
+    // Throws on anything unusable, into the catch below.
+    const insights = parseInsightsResponse(res.text);
 
     return {
       insights,

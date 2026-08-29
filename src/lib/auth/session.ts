@@ -95,6 +95,21 @@ export async function readSessionToken(token: string | undefined): Promise<Sessi
   }
 }
 
+/**
+ * Is this token still current for the account it names?
+ *
+ * The signature and expiry say the cookie is authentic; this says it has not
+ * been revoked. Bumping an account's `sessionVersion` — "sign out everywhere",
+ * a password change, a demotion — invalidates every token minted before the
+ * bump immediately, rather than leaving it valid for the rest of its eight
+ * hours. Pure and exported so the revocation guarantee is testable without a
+ * database standing in the way.
+ */
+export function isSessionCurrent(claims: SessionClaims, account: { active: boolean; sessionVersion: number }) {
+  if (!account.active) return false;
+  return (claims.ver ?? 0) === account.sessionVersion;
+}
+
 export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   return {
     httpOnly: true,

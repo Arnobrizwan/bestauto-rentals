@@ -60,10 +60,11 @@ jobs:
       - name: Sidebar and OpenAPI route coverage
         run: npm run test:routes
 
-      # Pure-function tests over the money path and the automation engine.
-      # They need a connection string only because importing the booking
-      # service pulls in the database client, which refuses to construct
-      # without one; nothing here touches a database.
+      # Pure-function tests: the money path, the automation engine, model
+      # output validation, sessions, the outbox state machine and the
+      # concierge slot parser. They need a connection string only because
+      # importing those modules pulls in the database client, which refuses to
+      # construct without one; nothing here touches a database.
       - name: Unit tests
         run: npm test
 
