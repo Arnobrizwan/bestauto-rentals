@@ -359,6 +359,36 @@ export const maintenanceJobs = pgTable(
   (t) => [index("maintenance_unit_idx").on(t.unitId), index("maintenance_status_idx").on(t.status)],
 );
 
+/**
+ * Customer testimonials, as shown on the home page.
+ *
+ * These were six objects in a `REVIEWS` const inside the component: the names,
+ * the cities and the star ratings on the public home page were literals in a
+ * TSX file, so correcting a misspelt name or taking down a review a customer
+ * had asked to remove meant a code change and a deploy. `active` is what takes
+ * one down; the row stays, because a testimonial removed from the site is
+ * still something the business said in public and may need to account for.
+ *
+ * `vehicleSlug` is nullable and deliberately not a foreign key — most reviews
+ * are about the service rather than one car, and retiring a car should not
+ * delete what a customer said about the trip they took in it.
+ */
+export const testimonials = pgTable(
+  "testimonials",
+  {
+    id: text("id").primaryKey(),
+    author: text("author").notNull(),
+    city: text("city").notNull().default(""),
+    /** Out of five. Half stars are real here — the design shows 4.5. */
+    rating: real("rating").notNull().default(5),
+    body: text("body").notNull(),
+    vehicleSlug: text("vehicle_slug"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("testimonials_active_idx").on(t.active)],
+);
+
 /** Discount codes. Percentage or flat taka off, with a validity window. */
 export const coupons = pgTable(
   "coupons",
@@ -428,3 +458,5 @@ export type VehicleUnit = typeof vehicleUnits.$inferSelect;
 export type VehicleDocument = typeof vehicleDocuments.$inferSelect;
 export type MaintenanceJob = typeof maintenanceJobs.$inferSelect;
 export type Coupon = typeof coupons.$inferSelect;
+export type Testimonial = typeof testimonials.$inferSelect;
+export type NewTestimonial = typeof testimonials.$inferInsert;

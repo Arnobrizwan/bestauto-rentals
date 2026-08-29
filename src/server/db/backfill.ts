@@ -11,7 +11,7 @@
 import { count } from "drizzle-orm";
 
 import { db } from "./client";
-import { coupons, maintenanceJobs, vehicleDocuments, vehicleUnits } from "./schema";
+import { coupons, maintenanceJobs, testimonials, vehicleDocuments, vehicleUnits } from "./schema";
 import { buildSeed } from "./seed-data";
 
 async function chunked<T>(rows: T[], size: number, fn: (batch: T[]) => Promise<unknown>) {
@@ -52,6 +52,16 @@ async function main() {
   } else {
     await db.insert(coupons).values(seed.coupons);
     console.log(`  coupons            ${seed.coupons.length}`);
+  }
+
+  // The home page renders these; an empty table would silently take the
+  // testimonials section off the public site on the deploy that introduced it.
+  const [reviews] = await db.select({ n: count() }).from(testimonials);
+  if (reviews?.n) {
+    console.log(`  testimonials       skipped (${reviews.n} rows)`);
+  } else {
+    await db.insert(testimonials).values(seed.testimonials);
+    console.log(`  testimonials       ${seed.testimonials.length}`);
   }
 
   console.log(`Done in ${Date.now() - started}ms.`);

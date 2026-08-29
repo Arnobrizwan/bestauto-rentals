@@ -10,6 +10,7 @@ import { Testimonials } from "@/components/site/testimonials";
 import type { VehicleCardData } from "@/components/site/vehicle-card";
 import { ButtonLink } from "@/components/ui";
 import { listPublicOffers } from "@/server/repositories/fleet-ops";
+import { listActiveTestimonials } from "@/server/repositories/testimonials";
 import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 
 /**
@@ -53,10 +54,11 @@ function trustStats(branches: number, rating: number, reviewed: number) {
 }
 
 export default async function HomePage() {
-  const [{ items, total }, facets, offers] = await Promise.all([
+  const [{ items, total }, facets, offers, reviews] = await Promise.all([
     listVehicles({ sort: "popular", limit: 8 }),
     listFacets(),
     listPublicOffers(),
+    listActiveTestimonials(),
   ]);
 
   // Mean of the cars that actually carry a rating, so one unrated new arrival
@@ -200,7 +202,7 @@ export default async function HomePage() {
       <AiMatcher />
       <WhyChooseUs />
       <PromoPanels />
-      <Testimonials />
+      <Testimonials reviews={reviews} />
       <RegisterSection />
     </>
   );

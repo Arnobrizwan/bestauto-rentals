@@ -4,50 +4,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-const REVIEWS = [
-  {
-    name: "Viezh Robert",
-    location: "Gulshan, Dhaka",
-    rating: 4.5,
-    body: "Wow... I am very happy to use this service, it turned out to be more than my expectations and so far there have been no problems. Best Auto always the best.",
-  },
-  {
-    name: "Nusrat Jahan",
-    location: "Dhanmondi, Dhaka",
-    rating: 4.8,
-    body: "Booked a microbus for eleven of us to Cox's Bazar. The driver reached Dhanmondi at 5am exactly as promised and the roof AC actually worked the whole way.",
-  },
-  {
-    name: "Imran Chowdhury",
-    location: "Agrabad, Chattogram",
-    rating: 4.7,
-    body: "Took the Prado to Bandarban. They told me straight that they would not send a sedan on that road, which I respected. The fixed round-trip rate included the driver's stay, no arguments at the end.",
-  },
-  {
-    name: "Farhana Akter",
-    location: "Uttara, Dhaka",
-    rating: 5,
-    body: "The E-Class arrived decorated and spotless on the wedding morning. Chauffeur in uniform, bottled water in the back. My in-laws still talk about it.",
-  },
-  {
-    name: "Rakib Hasan",
-    location: "Sylhet",
-    rating: 4.6,
-    body: "Hired the Axio hybrid for a fortnight of site visits. Fuel cost me almost nothing and the long-rental discount came off automatically without me asking.",
-  },
-  {
-    name: "Tanzila Rahman",
-    location: "Toronto, Canada",
-    rating: 4.9,
-    body: "Booked from abroad for my parents' arrival at Shahjalal. Name board at the gate, driver waited without complaint when the flight was late. Paid by card, no fuss.",
-  },
-];
+/**
+ * One review as the home page renders it.
+ *
+ * These six used to be a literal array in this file, which made the social
+ * proof on the public home page a deploy-only artefact: a misspelt name, or a
+ * customer asking for their words to come down, meant a code change. They come
+ * from the `testimonials` table now and the admin panel edits them.
+ */
+export type SiteTestimonial = {
+  id: string;
+  author: string;
+  city: string;
+  rating: number;
+  body: string;
+};
 
 const PER_PAGE = 3;
 
-export function Testimonials() {
+export function Testimonials({ reviews }: { reviews: SiteTestimonial[] }) {
   const [page, setPage] = useState(0);
-  const pageCount = Math.ceil(REVIEWS.length / PER_PAGE);
+  // Never zero: it divides the carousel and guards the modulo in `go`.
+  const pageCount = Math.max(1, Math.ceil(reviews.length / PER_PAGE));
   const trackRef = useRef<HTMLDivElement>(null);
 
   const go = useCallback(
@@ -80,6 +58,10 @@ export function Testimonials() {
     };
   }, [pageCount]);
 
+  // Every review taken down leaves the section with nothing honest to say,
+  // so it is omitted rather than rendered as an empty carousel.
+  if (reviews.length === 0) return null;
+
   return (
     <section id="testimonials" className="bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
@@ -101,23 +83,23 @@ export function Testimonials() {
           >
             {Array.from({ length: pageCount }, (_, p) => (
               <div key={p} className="grid w-full shrink-0 gap-5 px-0.5 md:grid-cols-3" aria-hidden={p !== page}>
-                {REVIEWS.slice(p * PER_PAGE, p * PER_PAGE + PER_PAGE).map((review) => (
+                {reviews.slice(p * PER_PAGE, p * PER_PAGE + PER_PAGE).map((review) => (
                   <figure
-                    key={review.name}
+                    key={review.id}
                     className="flex flex-col rounded-2xl border border-line bg-canvas p-6 transition-all hover:border-brand-200 hover:bg-white hover:shadow-lift"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <figcaption className="flex items-center gap-3">
                         <span className="grid size-11 place-items-center rounded-full bg-ink-900 font-display text-sm font-bold text-white">
-                          {review.name
+                          {review.author
                             .split(" ")
                             .slice(0, 2)
                             .map((w) => w[0])
                             .join("")}
                         </span>
                         <span>
-                          <span className="block font-display text-[15px] font-semibold text-ink-900">{review.name}</span>
-                          <span className="block text-[13px] text-ink-400">{review.location}</span>
+                          <span className="block font-display text-[15px] font-semibold text-ink-900">{review.author}</span>
+                          <span className="block text-[13px] text-ink-400">{review.city}</span>
                         </span>
                       </figcaption>
                       <span className="inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold text-ink-900">

@@ -134,6 +134,60 @@ const COUPONS = [
   { code: "MICROBUS12", description: "Microbus group travel, twelve percent off", kind: "percent", value: 12, minDays: 2, startedDaysAgo: 10, endsInDays: 50, usageLimit: 150 },
 ] as const;
 
+/* --------------------------------------------------------- testimonials */
+
+/**
+ * The six reviews the home page has always shown.
+ *
+ * They were a `REVIEWS` const inside `components/site/testimonials.tsx`, which
+ * made the public page's social proof a deploy-only artefact. They live here
+ * now as seed input; the page reads the table.
+ */
+export const TESTIMONIALS: {
+  author: string;
+  city: string;
+  rating: number;
+  body: string;
+  vehicleSlug?: string;
+}[] = [
+  {
+    author: "Viezh Robert",
+    city: "Gulshan, Dhaka",
+    rating: 4.5,
+    body: "Wow... I am very happy to use this service, it turned out to be more than my expectations and so far there have been no problems. Best Auto always the best.",
+  },
+  {
+    author: "Nusrat Jahan",
+    city: "Dhanmondi, Dhaka",
+    rating: 4.8,
+    body: "Booked a microbus for eleven of us to Cox's Bazar. The driver reached Dhanmondi at 5am exactly as promised and the roof AC actually worked the whole way.",
+  },
+  {
+    author: "Imran Chowdhury",
+    city: "Agrabad, Chattogram",
+    rating: 4.7,
+    body: "Took the Prado to Bandarban. They told me straight that they would not send a sedan on that road, which I respected. The fixed round-trip rate included the driver's stay, no arguments at the end.",
+  },
+  {
+    author: "Farhana Akter",
+    city: "Uttara, Dhaka",
+    rating: 5,
+    body: "The E-Class arrived decorated and spotless on the wedding morning. Chauffeur in uniform, bottled water in the back. My in-laws still talk about it.",
+  },
+  {
+    author: "Rakib Hasan",
+    city: "Sylhet",
+    rating: 4.6,
+    body: "Hired the Axio hybrid for a fortnight of site visits. Fuel cost me almost nothing and the long-rental discount came off automatically without me asking.",
+  },
+  {
+    author: "Tanzila Rahman",
+    city: "Toronto, Canada",
+    rating: 4.9,
+    body: "Booked from abroad for my parents' arrival at Shahjalal. Name board at the gate, driver waited without complaint when the flight was late. Paid by card, no fuss.",
+  },
+];
+
 export function buildSeed(now = new Date()) {
   const rng = makeRng(20260828);
 
@@ -474,5 +528,24 @@ export function buildSeed(now = new Date()) {
     active: c.endsInDays > 0,
   }));
 
-  return { vehicles, customers, bookings, leads, units, documents, maintenance, coupons };
+  /* ------------------------------------------------------- testimonials */
+  /*
+    Carried across verbatim from the `REVIEWS` const that used to live inside
+    the testimonials component, in the same order, so moving the section onto
+    the database changes nothing a visitor can see. `createdAt` is spaced a day
+    apart backwards from today, because the carousel orders by it and the
+    original array had a deliberate order.
+  */
+  const testimonials = TESTIMONIALS.map((t, i) => ({
+    id: `tst_${String(i + 1).padStart(3, "0")}`,
+    author: t.author,
+    city: t.city,
+    rating: t.rating,
+    body: t.body,
+    vehicleSlug: t.vehicleSlug ?? null,
+    active: true,
+    createdAt: new Date(now.getTime() - (TESTIMONIALS.length - i) * DAY_MS),
+  }));
+
+  return { vehicles, customers, bookings, leads, units, documents, maintenance, coupons, testimonials };
 }

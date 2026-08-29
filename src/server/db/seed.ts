@@ -24,6 +24,7 @@ import {
   maintenanceJobs,
   messages,
   outbox,
+  testimonials,
   vehicleDocuments,
   vehicleUnits,
   vehicles,
@@ -50,6 +51,7 @@ async function main() {
   await db.delete(leads);
   await db.delete(customers);
   await db.delete(coupons);
+  await db.delete(testimonials);
   await db.delete(maintenanceJobs);
   await db.delete(vehicleDocuments);
   await db.delete(vehicleUnits);
@@ -71,6 +73,9 @@ async function main() {
 
   await db.insert(coupons).values(seed.coupons);
   console.log(`  coupons    ${seed.coupons.length}`);
+
+  await db.insert(testimonials).values(seed.testimonials);
+  console.log(`  reviews    ${seed.testimonials.length}`);
 
   await chunked(seed.customers, 100, (batch) => db.insert(customers).values(batch));
   console.log(`  customers  ${seed.customers.length}`);

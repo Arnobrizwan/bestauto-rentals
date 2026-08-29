@@ -183,6 +183,32 @@ export async function GET(req: Request) {
           responses: { "200": { description: "the new status, and whether stock moved" }, "401": errorResponse, "404": errorResponse },
         },
       },
+      "/api/testimonials": {
+        get: {
+          summary: "List every testimonial, shown or hidden (admin)",
+          responses: { "200": { description: "testimonials" }, "401": errorResponse },
+        },
+        post: {
+          summary: "Publish a testimonial (admin)",
+          description:
+            "The home page carousel was a hardcoded array in the component that rendered it, so the social proof above the fold could only be changed by a deploy. Writes revalidate / so a published review is live immediately.",
+          responses: { "201": { description: "the published testimonial" }, "401": errorResponse, "422": errorResponse },
+        },
+      },
+      "/api/testimonials/{id}": {
+        patch: {
+          summary: "Edit a testimonial, or take it off the home page (admin)",
+          description: "`active: false` hides it and keeps the row — what the business published in public stays on record.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "the updated testimonial" }, "401": errorResponse, "404": errorResponse },
+        },
+        delete: {
+          summary: "Delete a testimonial (admin)",
+          description: "For a duplicate or something posted in error. Nothing downstream references a testimonial, so there is no history to orphan.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "deleted" }, "401": errorResponse, "404": errorResponse },
+        },
+      },
       "/api/coupons": {
         get: {
           summary: "List every discount code (admin)",

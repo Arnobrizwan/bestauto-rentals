@@ -39,6 +39,7 @@ const I = {
   ticket: "M4 7h16a1 1 0 0 1 1 1v2.5a1.5 1.5 0 0 0 0 3V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2.5a1.5 1.5 0 0 0 0-3V8a1 1 0 0 1 1-1zM10 9v6",
   brain: "M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1 0 8v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 0-8V7a4 4 0 0 1 4-4zM12 3v18M8 8h8M8 16h8",
   bolt: "M13 3 4 14h6l-1 7 9-11h-6z",
+  star: "m12 3.5 2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17.3l-5.3 2.8 1.1-6L3.4 9.9l6-.8z",
 } as const;
 
 /**
@@ -103,7 +104,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: "Promo",
-    items: [{ href: "/admin/promo", label: "Offers & coupons", icon: I.ticket }],
+    items: [
+      { href: "/admin/promo", label: "Offers & coupons", icon: I.ticket },
+      { href: "/admin/testimonials", label: "Testimonials", icon: I.star },
+    ],
   },
   {
     title: "Intelligence",
