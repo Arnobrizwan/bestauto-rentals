@@ -26,6 +26,7 @@ const COLUMNS = [
     links: [
       { label: "All cars", href: "/cars" },
       { label: "Current deals", href: "/#deals" },
+      { label: "Offers & codes", href: "/#offers" },
       { label: "What renters say", href: "/#testimonials" },
     ],
   },

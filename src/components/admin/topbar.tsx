@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { SignOutButton } from "./sign-out";
+
 const TITLES: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/vehicles": "Vehicles",
@@ -32,6 +34,38 @@ export function AdminTopbar({
   // Below `sm` the search collapses to an icon rather than disappearing.
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  const initials = user.name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+  // A menu that only closes by pressing its own button is a trap on touch,
+  // where there is no Escape key and nothing else to click.
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [accountOpen]);
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {
@@ -125,7 +159,10 @@ export function AdminTopbar({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search bookings, customers, references"
           aria-label="Search"
-          className="h-10 w-full rounded-lg border border-line bg-canvas pr-16 pl-10 text-sm text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-300 focus:bg-white"
+          // White, not `bg-canvas`. The grey fill read as a disabled field
+          // sitting on an already-grey top bar, so the one control an operator
+          // reaches for most looked like the one they could not use.
+          className="h-10 w-full rounded-lg border border-line bg-white pr-16 pl-10 text-sm text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
         />
         <kbd className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded border border-line bg-white px-1.5 py-0.5 font-sans text-[10px] font-semibold text-ink-400 sm:block">
           ⌘K
@@ -155,8 +192,14 @@ export function AdminTopbar({
           Fleet
         </Link>
 
+        {/*
+          "Add New" went to /cars — the *public* fleet listing. Pressing the
+          primary create button in the operations dashboard dropped an operator
+          onto the customer-facing catalogue with nothing to add. The
+          neighbouring "Fleet" link is the one that browses; this one creates.
+        */}
         <Link
-          href="/cars"
+          href="/admin/fleet/new"
           className="hidden h-9 items-center gap-1.5 rounded-lg bg-brand-400 px-3 font-admin text-[13px] font-semibold text-white transition-colors hover:bg-brand-500 sm:inline-flex"
         >
           <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -239,17 +282,58 @@ export function AdminTopbar({
           </svg>
         </Link>
 
-        <span
-          title={`${user.name} (${user.email})`}
-          className="grid size-9 place-items-center rounded-full bg-ink-900 font-admin text-[12px] font-bold text-white"
-        >
-          {user.name
-            .split(" ")
-            .slice(0, 2)
-            .map((w) => w[0])
-            .join("")
-            .toUpperCase()}
-        </span>
+        {/*
+          The avatar was a `span` with a tooltip — it looked like the account
+          control every dashboard puts in that corner and did nothing when
+          clicked. It is now the menu it appeared to be, and it holds the
+          account block that used to sit at the bottom of the sidebar, where it
+          cost permanent vertical space to say something you need once.
+        */}
+        <div ref={accountRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setAccountOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={accountOpen}
+            aria-label={`Account: ${user.name}`}
+            className="grid size-9 place-items-center rounded-full bg-ink-900 font-admin text-[12px] font-bold text-white transition-opacity hover:opacity-90"
+          >
+            {initials}
+          </button>
+
+          {accountOpen && (
+            <div
+              role="menu"
+              className="absolute top-11 right-0 z-50 w-60 overflow-hidden rounded-xl border border-line bg-white shadow-lift"
+            >
+              <div className="flex items-center gap-2.5 border-b border-line bg-canvas px-3.5 py-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink-900 font-admin text-[11px] font-bold text-white">
+                  {initials}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-admin text-[13px] font-bold text-ink-900">{user.name}</span>
+                  <span className="block truncate text-[11px] text-ink-400 capitalize">{user.role}</span>
+                  <span className="block truncate text-[11px] text-ink-400">{user.email}</span>
+                </span>
+              </div>
+
+              <Link
+                href="/"
+                onClick={() => setAccountOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 font-admin text-[14px] font-semibold text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-900"
+              >
+                <svg viewBox="0 0 24 24" className="size-[18px] shrink-0 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M10 8l-4 4 4 4M6 12h10" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Back to site
+              </Link>
+
+              <div className="px-1.5 pb-1.5">
+                <SignOutButton />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

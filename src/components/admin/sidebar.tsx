@@ -7,20 +7,17 @@ import { Logo } from "@/components/site/logo";
 import { cn } from "@/lib/utils";
 
 import { NAV_GROUPS } from "./nav-config";
-import { SignOutButton } from "./sign-out";
 
 export function AdminSidebar({
   open,
   onClose,
   hotLeads,
-  user,
   collapsed,
   onToggleCollapse,
 }: {
   open: boolean;
   onClose: () => void;
   hotLeads: number;
-  user: { name: string; email: string; role: string };
   collapsed: boolean;
   onToggleCollapse: () => void;
 }) {
@@ -148,36 +145,13 @@ export function AdminSidebar({
           ))}
         </nav>
 
-        <div className="shrink-0 border-t border-line p-3">
-          <div className={cn("mb-2 flex items-center gap-2.5 rounded-lg bg-canvas px-3 py-2.5", collapsed && "lg:justify-center lg:px-0")}>
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-900 font-admin text-[11px] font-bold text-white">
-              {user.name
-                .split(" ")
-                .slice(0, 2)
-                .map((w) => w[0])
-                .join("")
-                .toUpperCase()}
-            </span>
-            <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <span className="block truncate font-admin text-[13px] font-bold text-ink-900">{user.name}</span>
-              <span className="block truncate text-[11px] text-ink-400 capitalize">{user.role}</span>
-            </span>
-          </div>
-          <Link
-            href="/"
-            title={collapsed ? "Back to site" : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-lg py-2.5 font-admin text-[14px] font-semibold text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-900",
-              collapsed ? "px-3 lg:justify-center lg:px-0" : "px-3",
-            )}
-          >
-            <svg viewBox="0 0 24 24" className="size-[18px] shrink-0 text-ink-400" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M10 8l-4 4 4 4M6 12h10" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className={cn(collapsed && "lg:hidden")}>Back to site</span>
-          </Link>
-          <SignOutButton collapsed={collapsed} />
-        </div>
+        {/*
+          The account block, "Back to site" and "Sign out" used to live here,
+          costing permanent vertical space in every viewport to say something
+          an operator needs once a session. They are in the avatar menu in the
+          top bar now — where that control already looked like it should open
+          them — so the nav is only navigation.
+        */}
       </aside>
     </>
   );

@@ -2,12 +2,14 @@ import Image from "next/image";
 
 import { AiMatcher } from "@/components/site/ai-matcher";
 import { Deals } from "@/components/site/deals";
+import { Offers } from "@/components/site/offers";
 import { SearchPanel } from "@/components/site/search-panel";
 import { HowItWorks, PromoPanels, WhyChooseUs } from "@/components/site/sections";
 import { RegisterSection } from "@/components/site/register";
 import { Testimonials } from "@/components/site/testimonials";
 import type { VehicleCardData } from "@/components/site/vehicle-card";
 import { ButtonLink } from "@/components/ui";
+import { listPublicOffers } from "@/server/repositories/fleet-ops";
 import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 
 /**
@@ -35,9 +37,10 @@ const TRUST = [
 ];
 
 export default async function HomePage() {
-  const [{ items, total }, facets] = await Promise.all([
+  const [{ items, total }, facets, offers] = await Promise.all([
     listVehicles({ sort: "popular", limit: 8 }),
     listFacets(),
+    listPublicOffers(),
   ]);
 
   const deals: VehicleCardData[] = items.map((v) => ({
@@ -171,6 +174,7 @@ export default async function HomePage() {
 
       <HowItWorks />
       <Deals initial={deals} initialTotal={total} />
+      <Offers offers={offers} />
       <AiMatcher />
       <WhyChooseUs />
       <PromoPanels />

@@ -213,6 +213,43 @@ export async function listCoupons() {
 }
 
 /**
+ * The offers a customer is allowed to see.
+ *
+ * Seven codes were live and there was nowhere on the public site to find one —
+ * the booking form had a box to type a code into and no way to learn that any
+ * existed, so every offer only reached people who had been told about it
+ * elsewhere. This is the same validity test `findRedeemableCoupon` applies, so
+ * the site can never advertise a code that would be refused at checkout: live
+ * window, still active, and not already exhausted.
+ *
+ * Deliberately narrower than `listCoupons`, which is the operator's view. The
+ * usage limit and redemption count are internal — a customer does not need to
+ * know that 45 of 200 have gone, and publishing it invites a rush.
+ */
+export async function listPublicOffers() {
+  const rows = await db
+    .select({
+      code: coupons.code,
+      description: coupons.description,
+      kind: coupons.kind,
+      value: sql<number>`${coupons.value}::float8`,
+      minDays: coupons.minDays,
+      endsAt: coupons.endsAt,
+      daysLeft: sql<number>`(${coupons.endsAt} - current_date)::int`,
+    })
+    .from(coupons)
+    .where(
+      sql`${coupons.active}
+        and ${coupons.startsAt} <= current_date
+        and ${coupons.endsAt} >= current_date
+        and (${coupons.usageLimit} = 0 or ${coupons.usedCount} < ${coupons.usageLimit})`,
+    )
+    .orderBy(asc(sql`${coupons.endsAt} - current_date`));
+
+  return rows.map((r) => ({ ...r, value: Number(r.value), daysLeft: Number(r.daysLeft) }));
+}
+
+/**
  * Looks up a redeemable coupon.
  *
  * Validity is checked in SQL against the database's own `current_date` rather

@@ -269,7 +269,17 @@ export function Dashboard({
           <svg viewBox="0 0 24 24" aria-hidden className="size-9 opacity-90" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M3 20h18M6 20V9M11 20V4M16 20v-7M21 20v-11" strokeLinecap="round" />
           </svg>
-          <p className="mt-5 font-admin text-[30px] leading-none font-bold">{formatNumber(kpis.bookings.value)}</p>
+          <p className="mt-4 font-admin text-[34px] leading-none font-bold">{formatNumber(kpis.bookings.value)}</p>
+          {/*
+            The change was in a `title` tooltip, which is invisible on touch and
+            unnoticed everywhere else — so two of the three headline cards
+            showed a bare number with no sense of direction, and a lot of empty
+            colour under it. It is on the card now, in the card's own palette.
+          */}
+          <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[12px] font-semibold">
+            <span aria-hidden>{kpis.bookings.delta >= 0 ? "↑" : "↓"}</span>
+            {Math.abs(kpis.bookings.delta).toFixed(0)}% vs last period
+          </p>
           {/*
             This tile and the "Booking status" donut below both counted
             "bookings" over the same range and disagreed — the tile counts
@@ -310,7 +320,11 @@ export function Dashboard({
             <path d="M4 15h16v3a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1v-.5h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
             <path d="M5.5 15 7 9.6A2 2 0 0 1 8.9 8h6.2a2 2 0 0 1 1.9 1.6L18.5 15" strokeLinecap="round" />
           </svg>
-          <p className="mt-5 font-admin text-[30px] leading-none font-bold">{formatNumber(kpis.rentalDays.value)}</p>
+          <p className="mt-4 font-admin text-[34px] leading-none font-bold">{formatNumber(kpis.rentalDays.value)}</p>
+          <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[12px] font-semibold text-white/90">
+            <span aria-hidden>{kpis.rentalDays.delta >= 0 ? "↑" : "↓"}</span>
+            {Math.abs(kpis.rentalDays.delta).toFixed(0)}% vs last period
+          </p>
           <p
             className="mt-1.5 text-[14px] text-white/70"
             title={`${kpis.rentalDays.delta >= 0 ? "+" : ""}${kpis.rentalDays.delta.toFixed(0)}% vs the previous period · ${formatNumber(kpis.customers.value)} new customers`}
