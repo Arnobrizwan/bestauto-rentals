@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/server";
 import { log } from "@/lib/observability/logger";
 import { fail, guard, ok, readJson, sanitizeText } from "@/lib/security/http";
+import { FUELS, SEGMENTS, TRANSMISSIONS } from "@/lib/taxonomy";
 import { insertVehicle, listVehicles } from "@/server/repositories/vehicles";
 
 export const dynamic = "force-dynamic";
@@ -50,10 +51,12 @@ const createSchema = z.object({
   brand: z.string().min(2).max(60),
   model: z.string().min(1).max(60),
   year: z.coerce.number().int().min(1990).max(2100),
-  segment: z.enum(["popular", "small", "large", "exclusive"]),
+  // The shared vocabulary, not a fourth copy of it. "popular" is not a
+  // segment and Octane is a real fuel — see src/lib/taxonomy.ts.
+  segment: z.enum(SEGMENTS),
   bodyType: z.string().min(2).max(40),
-  transmission: z.enum(["Automatic", "Manual"]),
-  fuel: z.enum(["Petrol", "Diesel", "Hybrid", "Electric", "CNG"]),
+  transmission: z.enum(TRANSMISSIONS),
+  fuel: z.enum(FUELS),
   seats: z.coerce.number().int().min(2).max(15),
   doors: z.coerce.number().int().min(2).max(6),
   bags: z.coerce.number().int().min(0).max(12),

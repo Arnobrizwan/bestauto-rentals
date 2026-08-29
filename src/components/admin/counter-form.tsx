@@ -4,11 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button, Card, Field, Input, Select } from "@/components/ui";
+import { PAYMENT_METHODS } from "@/lib/taxonomy";
 import { formatCurrency } from "@/lib/utils";
 
 type Vehicle = { slug: string; name: string; pricePerDay: number; seats: number };
-
-const PAYMENTS = ["bKash", "Nagad", "Rocket", "SSLCOMMERZ", "Visa", "Bank transfer", "Cash on pickup"];
 
 /**
  * The counter desk — the walk-in equivalent of the Figma's POS screen.
@@ -97,7 +96,7 @@ export function CounterForm({ vehicles, branches }: { vehicles: Vehicle[]; branc
         </Field>
         <Field label="Payment">
           <Select name="paymentMethod" defaultValue="Cash on pickup">
-            {PAYMENTS.map((p) => (
+            {PAYMENT_METHODS.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

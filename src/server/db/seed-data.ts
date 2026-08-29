@@ -5,6 +5,8 @@
  * hard-coded totals anywhere in the UI. A seeded PRNG keeps runs reproducible
  * so screenshots and tests stay stable.
  */
+import { PAYMENT_METHODS } from "@/lib/taxonomy";
+
 import { SEED_FLEET } from "./fleet";
 
 /* ------------------------------------------------------------------ PRNG */
@@ -79,8 +81,8 @@ export const PICKUP_POINTS = [
   "Cox's Bazar",
 ] as const;
 
-/** Payment rails people in Bangladesh actually use. */
-const PAYMENTS = ["bKash", "Nagad", "Rocket", "SSLCOMMERZ", "Visa", "Bank transfer", "Cash on pickup"] as const;
+/** Shared with the counter desk, so the two lists cannot drift apart. */
+const PAYMENTS = PAYMENT_METHODS;
 
 const EXTRAS = [
   "Additional driver",

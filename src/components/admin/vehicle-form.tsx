@@ -4,11 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
-
-const SEGMENTS = ["popular", "small", "large", "exclusive"];
-const BODY_TYPES = ["Sedan", "Hatchback", "SUV", "Microbus", "Crossover", "Estate"];
-const TRANSMISSIONS = ["Automatic", "Manual"];
-const FUELS = ["Petrol", "Diesel", "Hybrid", "Electric", "CNG"];
+import { FUELS, SEGMENTS, TRANSMISSIONS } from "@/lib/taxonomy";
 
 /**
  * Adds a model to the fleet.
@@ -17,7 +13,16 @@ const FUELS = ["Petrol", "Diesel", "Hybrid", "Electric", "CNG"];
  * business actually runs on, and the dashboard derives it from these two —
  * leaving cost out here would silently break every margin figure downstream.
  */
-export function VehicleForm({ branches }: { branches: readonly string[] }) {
+/**
+ * The three closed vocabularies come from `@/lib/taxonomy`, which is the same
+ * module the create endpoint validates against — the dropdown cannot offer a
+ * value the API would reject, which is exactly what it used to do with
+ * "popular", nor omit one it accepts, which is what it did with Octane.
+ *
+ * `bodyType` is free text on the vehicle, so its options are passed in: the
+ * page unions the canonical list with what the fleet is actually running.
+ */
+export function VehicleForm({ branches, bodyTypes }: { branches: readonly string[]; bodyTypes: readonly string[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +76,7 @@ export function VehicleForm({ branches }: { branches: readonly string[] }) {
         </Field>
         <Field label="Body type">
           <Select name="bodyType" defaultValue="Sedan">
-            {BODY_TYPES.map((b) => (
+            {bodyTypes.map((b) => (
               <option key={b}>{b}</option>
             ))}
           </Select>
