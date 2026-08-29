@@ -88,63 +88,28 @@ body {
 }
 
 /*
- * Reveal-on-scroll, in CSS alone.
+ * There is no scroll reveal any more, and that is deliberate.
  *
- * Three JavaScript versions of this each traded one failure for another. An
+ * Four versions of it shipped and three of them hid real content. An
  * IntersectionObserver set up before the streamed page subtree existed found
- * nothing to watch and left every section blank. A `window.load` listener
- * registered after the event had already fired waited forever. And every
- * version that wrote an attribute — `data-revealed`, then `data-reveal-armed`
- * — was reported as a hydration mismatch on each of the twenty elements it
- * touched, because the layout's effect runs before the page below it has
- * hydrated and React compares what it finds against what it rendered.
+ * nothing to watch. A `window.load` listener registered after the event had
+ * fired waited forever. Every version that wrote an attribute — `data-revealed`,
+ * then `data-reveal-armed` — raced hydration and was reported as a mismatch on
+ * each of the twenty elements it touched. The CSS scroll-timeline version
+ * avoided the mismatch and still left the page blank below the fold, because
+ * `view()` resolves against the nearest scrollport and several of these
+ * elements are inside horizontally scrollable wrappers.
  *
- * That last one is not a bug to fix, it is the rule: JavaScript cannot add an
- * attribute to a server-rendered element without racing hydration. So nothing
- * does. The animation is driven by the scroll position itself, the markup is
- * identical on the server and the client, and there is no observer, no
- * listener, no timer and no component.
- *
- * `opacity: 0` lives inside the `@supports` guard, so a browser without
- * scroll-driven animations (Firefox today) shows every section immediately
- * rather than hiding content it cannot reveal. Elements already on screen at
- * load are past their entry range and render at the end state, so the fold is
- * never blank either.
+ * Each fix was sound in isolation and each one had a way to fail closed, with
+ * the failure being "the customer sees an empty page" — Current deals, What
+ * renters say and the contact form all rendered, present in the DOM, and
+ * invisible. That is a bad trade for a fade-in. The `data-reveal` attributes
+ * stay in the markup, inert, so the animation can be reintroduced deliberately
+ * if it is ever worth the risk again.
  */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    [data-reveal] {
-      opacity: 0;
-      transform: translateY(20px);
-      animation: reveal-in linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 55%;
-    }
-
-    /* The stagger the old delays expressed, as a later slice of the same
-       range — the attributes are already in the server-rendered markup. */
-    [data-reveal][data-reveal-delay="60"],
-    [data-reveal][data-reveal-delay="80"],
-    [data-reveal][data-reveal-delay="90"] {
-      animation-range: entry 8% entry 63%;
-    }
-
-    [data-reveal][data-reveal-delay="180"] {
-      animation-range: entry 16% entry 71%;
-    }
-  }
-}
-
-@keyframes reveal-in {
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  [data-reveal] { opacity: 1; transform: none; animation: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
