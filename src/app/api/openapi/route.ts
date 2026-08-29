@@ -86,6 +86,12 @@ export async function GET(req: Request) {
           parameters: [{ name: "reference", in: "path", required: true, schema: { type: "string" } }],
           responses: { "200": { description: "Booking" }, "404": errorResponse },
         },
+        patch: {
+          summary: "Confirm, cancel or reinstate a booking (admin)",
+          description:
+            "Cancelling emits booking.cancelled, which the shipped Cancellation recovery rule listens for — the route was GET-only, so that event could never fire and the rule was unreachable. A cancellation also releases the unit the booking was holding.",
+          responses: { "200": { description: "the updated booking and how many automation rules ran" }, "401": errorResponse, "404": errorResponse },
+        },
       },
       "/api/leads": {
         get: { summary: "List leads", responses: { "200": { description: "Paged leads" } } },

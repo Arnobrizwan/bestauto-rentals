@@ -9,6 +9,7 @@ import { SOURCE_LABELS } from "@/components/charts/mini";
 import { Badge, Card, EmptyState, Skeleton, type BadgeTone } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { listBookings } from "@/server/repositories/bookings";
+import { BookingActions } from "@/components/admin/booking-actions";
 import { getStatusMix, resolveRange } from "@/server/repositories/analytics";
 
 export const dynamic = "force-dynamic";
@@ -98,7 +99,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
             <table className="w-full min-w-[980px]">
               <thead>
                 <tr className="bg-canvas text-left">
-                  {["Reference", "Vehicle", "Customer", "Dates", "Source", "Status", "Total"].map((h) => (
+                  {["Reference", "Vehicle", "Customer", "Dates", "Source", "Status", "Total", "Actions"].map((h) => (
                     <th key={h} className="px-5 py-3 font-admin text-[13px] font-bold text-ink-900 last:text-right">
                       {h}
                     </th>
@@ -147,6 +148,9 @@ export default async function BookingsPage({ searchParams }: { searchParams: Sea
                     </td>
                     <td className="px-5 py-3.5 text-right font-admin text-[14px] font-bold text-ink-900">
                       {formatCurrency(b.total)}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <BookingActions reference={b.reference} status={b.status} />
                     </td>
                   </tr>
                 ))}

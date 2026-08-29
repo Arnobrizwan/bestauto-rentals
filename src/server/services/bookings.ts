@@ -3,9 +3,10 @@ import { EXTRA_PRICES, ONE_OFF_EXTRAS, durationDiscount } from "@/ai/tools";
 import { log } from "@/lib/observability/logger";
 import { formatCurrency } from "@/lib/utils";
 import { sanitizeText } from "@/lib/security/http";
-import { countOverlapping, insertBooking, updateBookingStatus } from "@/server/repositories/bookings";
+import { countOverlapping, getBookingByReference, insertBooking, updateBookingStatus } from "@/server/repositories/bookings";
 import { findRedeemableCoupon, redeemCoupon } from "@/server/repositories/fleet-ops";
 import { upsertCustomer } from "@/server/repositories/customers";
+import { adjustAvailability } from "@/server/repositories/vehicles";
 import { getVehicleBySlug } from "@/server/repositories/vehicles";
 
 export type Quote = {
@@ -204,9 +205,56 @@ export async function createBooking(input: CreateBookingInput) {
   return { booking, vehicle, customer, quote: { ...priced, couponDiscount, total }, automation };
 }
 
+/**
+ * Cancels a booking and lets the automation engine know.
+ *
+ * This existed with no callers at all: `/api/bookings/[reference]` exported
+ * only GET, so nothing in the product could reach it, and the shipped
+ * "Cancellation recovery" rule listened for a `booking.cancelled` event that
+ * could never be emitted. An automation nobody can trigger is a rule in a
+ * table, not a feature.
+ */
 export async function cancelBooking(id: string, payload: Record<string, unknown>) {
   const updated = await updateBookingStatus(id, "cancelled");
   if (!updated) throw new BookingError("Booking not found.", 404);
   const automation = await emit("booking.cancelled", { booking: { id, ...payload } });
   return { booking: updated, automation };
+}
+
+/**
+ * Moves a booking between the statuses the dashboard already counts.
+ *
+ * Cancelling routes through `cancelBooking` so the event fires and the
+ * recovery rule runs; the other transitions are a plain status change. A
+ * cancelled booking releases the unit it was holding, because the inventory
+ * rule that took one on creation has no counterpart — without this the stock
+ * stays down forever on a booking that no longer exists.
+ */
+export async function setBookingStatus(reference: string, status: "pending" | "success" | "cancelled") {
+  const row = await getBookingByReference(reference);
+  if (!row) throw new BookingError("Booking not found.", 404);
+
+  const was = row.booking.status;
+  if (was === status) return { booking: row.booking, automation: null, released: false };
+
+  if (status === "cancelled") {
+    const result = await cancelBooking(row.booking.id, {
+      reference: row.booking.reference,
+      total: Number(row.booking.total),
+      vehicleId: row.booking.vehicleId,
+      customerId: row.booking.customerId,
+    });
+    // Give the unit back, once, and only when leaving a state that held one.
+    if (was !== "cancelled") await adjustAvailability(row.booking.vehicleId, 1);
+    return { booking: result.booking, automation: result.automation, released: true };
+  }
+
+  const updated = await updateBookingStatus(row.booking.id, status);
+  if (!updated) throw new BookingError("Booking not found.", 404);
+
+  // Coming back from cancelled re-commits the unit.
+  const retaken = was === "cancelled";
+  if (retaken) await adjustAvailability(row.booking.vehicleId, -1);
+
+  return { booking: updated, automation: null, released: false, retaken };
 }
