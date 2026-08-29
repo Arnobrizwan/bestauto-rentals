@@ -141,7 +141,15 @@ export default async function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950/25 to-transparent" />
               </div>
 
-              <div className="absolute -bottom-5 -left-3 flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 shadow-lift sm:-left-6">
+              {/*
+                The overhang is capped at the padding it has to overhang into.
+                `sm:-left-6` pulls 24px left from 640px up, but the container
+                only carries 20px of padding until `lg:px-8` at 1024px — so
+                between roughly 640 and 1024 the badge sat 4px past the content
+                edge and was clipped. The wider pull now waits for the wider
+                padding.
+              */}
+              <div className="absolute -bottom-5 -left-3 flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 shadow-lift lg:-left-6">
                 <span className="grid size-10 place-items-center rounded-xl bg-success-soft text-success">
                   <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />

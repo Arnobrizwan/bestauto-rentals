@@ -11,55 +11,92 @@ import { useEffect } from "react";
  */
 export function RevealOnScroll() {
   useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
-    if (!nodes.length) return;
+    let cancelled = false;
+    const cleanups: (() => void)[] = [];
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
-      return;
-    }
+    /**
+     * Waits for hydration to finish before touching anything.
+     *
+     * This component is rendered by the site layout, which is outside the
+     * page's own Suspense boundary, so its effect fires while the streamed
+     * page subtree can still be hydrating. Setting `data-revealed` on a node
+     * React has not hydrated yet is an attribute the server HTML does not
+     * carry, and React reports every one of them as a hydration mismatch —
+     * the home page logged one per revealed section. Deferring past `load`
+     * and a frame puts the mutation after hydration has committed.
+     */
+    const whenHydrated = (run: () => void) => {
+      const go = () => requestAnimationFrame(() => !cancelled && run());
+      if (document.readyState === "complete") {
+        go();
+        return;
+      }
+      window.addEventListener("load", go, { once: true });
+      cleanups.push(() => window.removeEventListener("load", go));
+    };
 
-    const revealAll = () => nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
+    whenHydrated(() => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-reveal]"),
+      );
+      if (!nodes.length) return;
 
-    // No observer, no reveal — and the CSS starts these elements at opacity 0,
-    // so without this the page is simply blank.
-    if (!("IntersectionObserver" in window)) {
-      revealAll();
-      return;
-    }
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
+        return;
+      }
 
-    let anyRevealed = false;
+      const revealAll = () =>
+        nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const el = entry.target as HTMLElement;
-          const delay = Number(el.dataset.revealDelay ?? 0);
-          anyRevealed = true;
-          window.setTimeout(() => el.setAttribute("data-revealed", "true"), delay);
-          observer.unobserve(el);
-        }
-      },
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
-    );
+      // No observer, no reveal — and the CSS starts these elements at opacity 0,
+      // so without this the page is simply blank.
+      if (!("IntersectionObserver" in window)) {
+        revealAll();
+        return;
+      }
 
-    nodes.forEach((n) => observer.observe(n));
+      let anyRevealed = false;
 
-    // Failsafe for contexts where the observer exists but never fires — an
-    // iframe whose viewport never intersects the root is the one that bit us,
-    // and it left How it works, the deals grid, Why choose us and the
-    // testimonials permanently invisible. If nothing at all has been revealed
-    // by now the observer is not working, so show everything rather than
-    // animate nothing. A single reveal is enough to prove it does work, which
-    // is why this checks the flag instead of unconditionally revealing.
-    const failsafe = window.setTimeout(() => {
-      if (!anyRevealed) revealAll();
-    }, 1200);
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const el = entry.target as HTMLElement;
+            const delay = Number(el.dataset.revealDelay ?? 0);
+            anyRevealed = true;
+            window.setTimeout(
+              () => el.setAttribute("data-revealed", "true"),
+              delay,
+            );
+            observer.unobserve(el);
+          }
+        },
+        { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
+      );
+
+      nodes.forEach((n) => observer.observe(n));
+
+      // Failsafe for contexts where the observer exists but never fires — an
+      // iframe whose viewport never intersects the root is the one that bit us,
+      // and it left How it works, the deals grid, Why choose us and the
+      // testimonials permanently invisible. If nothing at all has been revealed
+      // by now the observer is not working, so show everything rather than
+      // animate nothing. A single reveal is enough to prove it does work, which
+      // is why this checks the flag instead of unconditionally revealing.
+      const failsafe = window.setTimeout(() => {
+        if (!anyRevealed) revealAll();
+      }, 1200);
+
+      cleanups.push(() => {
+        window.clearTimeout(failsafe);
+        observer.disconnect();
+      });
+    });
 
     return () => {
-      window.clearTimeout(failsafe);
-      observer.disconnect();
+      cancelled = true;
+      cleanups.forEach((fn) => fn());
     };
   }, []);
 
