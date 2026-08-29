@@ -24,11 +24,16 @@ jobs:
       # drizzle-kit rejected it outright. The database-backed steps therefore
       # run against a real Neon branch when DATABASE_URL is configured, and are
       # skipped otherwise so pull requests from forks still get the rest.
-      # `next build` collects page data, which evaluates the database client,
-      # which throws when no connection string is present. It never connects at
-      # build time, so a placeholder is enough to get the build through; the
-      # separate flag is what decides whether the seeded steps can run, because
-      # once a fallback is in place DATABASE_URL is never empty.
+      # `next build` does not merely evaluate the database client — it reads
+      # from it. `/` and the twelve `/cars/[slug]` pages carry `revalidate`, so
+      # they are prerendered, and prerendering runs their queries. That is why
+      # the schema push and the seed have to come before the build: a commit
+      # that adds a table would otherwise build against a branch that does not
+      # have it yet, which is exactly how the testimonials table broke this
+      # workflow. The placeholder keeps the client constructible on a fork with
+      # no secret; the separate flag is what decides whether the database-backed
+      # steps run, because once a fallback is in place DATABASE_URL is never
+      # empty.
       DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://build:build@localhost:5432/build' }}
       HAS_DATABASE: ${{ secrets.DATABASE_URL != '' }}
       # The app refuses to start a production session without this; CI sets it
@@ -74,20 +79,23 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Ahead of the build, not after it. The build prerenders pages that query
+      # the database, so the branch has to be carrying this commit's schema
+      # before `next build` runs — and the evaluation suite further down needs
+      # the same branch seeded with the real fleet rather than a stub.
+      - name: Push the schema and seed the review branch
+        if: env.HAS_DATABASE == 'true'
+        run: |
+          npm run db:push -- --force
+          npm run db:seed
+
       - name: Build
         run: npm run build
 
       # The gate that has caught real defects. It asserts behaviour rather than
       # wording, so it grades the deterministic engines and a hosted model
       # alike, and exits non-zero below 85%. It scores the recommender against
-      # the real fleet, which is why it needs a seeded database rather than a
-      # stub.
-      - name: Seed the review branch
-        if: env.HAS_DATABASE == 'true'
-        run: |
-          npm run db:push -- --force
-          npm run db:seed
-
+      # the real fleet, which is why the step above seeds rather than stubs.
       - name: AI evaluation suite
         if: env.HAS_DATABASE == 'true'
         run: npm run eval

@@ -190,13 +190,15 @@ resolves to a page, and every admin page is reachable from the sidebar. No 404s.
 `.github/workflows/ci.yml` runs on every push and pull request.
 
 ```
-QR goldens  →  sidebar + OpenAPI route coverage  →  unit tests  →  types  →  lint  →  build
-            →  seed the review branch  →  AI evaluation suite
+QR goldens  →  sidebar + OpenAPI route coverage  →  unit tests  →  types  →  lint
+            →  push the schema + seed the review branch  →  build  →  AI evaluation suite
 ```
 
-The database-free checks run first so failures come back fast. The evaluation suite comes last
-because it needs data: it scores the recommender against the **real fleet** rather than a stub, so
-running it without a seeded database would grade nothing.
+The database-free checks run first so failures come back fast. The schema push and seed sit **before**
+the build, not after it: `/` and the twelve `/cars/[slug]` pages carry `revalidate`, so `next build`
+prerenders them, and prerendering runs their queries. A commit that adds a table would otherwise be
+built against a branch that does not have it yet. The evaluation suite comes last because it needs
+that same seeded data: it scores the recommender against the **real fleet** rather than a stub.
 
 **It runs against a dedicated Neon branch, never production.** `npm run db:seed` truncates, so the
 `DATABASE_URL` secret points at a disposable `ci` branch of the same project that CI pushes the
