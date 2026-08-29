@@ -156,9 +156,10 @@ export function AiMatcher() {
           <div className="mt-12">
             <div className="mx-auto mb-7 flex max-w-3xl flex-col items-center gap-2 text-center">
               <p className="text-[15px] text-white/80">{result.summary}</p>
-              <p className="text-xs text-white/35">
-                {result.engine.hosted ? `${result.engine.model}` : "Deterministic matcher"} · {result.latencyMs}ms
-              </p>
+              {/* Same rule as the concierge header: what it did, not which
+                  model did it. The engine is recorded and shown in the admin
+                  AI console; a customer has no use for a model id. */}
+              <p className="text-xs text-white/35">Matched against live availability · {result.latencyMs}ms</p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-3">

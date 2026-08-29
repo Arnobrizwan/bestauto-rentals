@@ -248,9 +248,19 @@ export function Concierge() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-semibold">Booking assistant</p>
+            {/*
+              Says what the assistant does, never which model is doing it. This
+              line rendered the raw model id — "qwen-plus" — to customers as
+              soon as a hosted model answered. That is an internal detail: it
+              means nothing to someone booking a car, it dates the product the
+              day the model is swapped, and it needlessly tells the world which
+              vendor sits behind the endpoint. Which engine answered is still
+              recorded per message and shown in the admin AI console, where it
+              is actually useful.
+            */}
             <p className="flex items-center gap-1.5 text-[11px] text-white/50">
               <span className="size-1.5 rounded-full bg-success" />
-              {last?.engine?.hosted ? last.engine.model : "Checks live availability"}
+              Checks live availability
             </p>
           </div>
           <button
