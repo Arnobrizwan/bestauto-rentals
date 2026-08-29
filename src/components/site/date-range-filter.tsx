@@ -90,8 +90,13 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
         onClick={() => apply(from, to)}
         disabled={!ordered || !changed || pending}
         className={cn(
-          "h-9 rounded-lg bg-ink-900 px-3.5 text-[13px] font-semibold text-white transition-opacity",
-          "disabled:cursor-not-allowed disabled:opacity-40",
+          // The border is always there, just transparent when enabled, so the
+          // button does not change size as it enables.
+          "h-9 rounded-lg border border-transparent bg-ink-900 px-3.5 text-[13px] font-semibold text-white transition-colors",
+          // Disabled reads as white and outlined rather than a dimmed dark
+          // slab — a faded solid button looks like a rendering fault next to
+          // the white inputs it sits beside.
+          "disabled:cursor-not-allowed disabled:border-line disabled:bg-white disabled:text-ink-300",
         )}
       >
         {pending ? "Checking…" : "Check availability"}

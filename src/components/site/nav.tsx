@@ -76,7 +76,7 @@ export function SiteNav() {
           */}
           <Link
             href="/cars"
-            className="inline-flex h-10 items-center rounded-full border border-ink-200 bg-white px-5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
+            className="inline-flex h-10 items-center rounded-full bg-brand-400 px-5 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(255,159,67,0.9)] transition-all hover:bg-brand-500 hover:shadow-[0_14px_28px_-10px_rgba(255,159,67,0.95)] active:translate-y-px"
           >
             Book a car
           </Link>
@@ -122,7 +122,7 @@ export function SiteNav() {
             <Link
               href="/cars"
               onClick={() => setOpen(false)}
-              className="mt-2 inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 text-[15px] font-medium text-ink-900"
+              className="mt-2 inline-flex h-12 items-center justify-center rounded-xl bg-brand-400 text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(255,159,67,0.9)]"
             >
               Book a car
             </Link>
