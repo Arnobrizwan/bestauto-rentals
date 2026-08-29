@@ -270,12 +270,27 @@ export function Dashboard({
             <path d="M3 20h18M6 20V9M11 20V4M16 20v-7M21 20v-11" strokeLinecap="round" />
           </svg>
           <p className="mt-5 font-admin text-[30px] leading-none font-bold">{formatNumber(kpis.bookings.value)}</p>
+          {/*
+            This tile and the "Booking status" donut below both counted
+            "bookings" over the same range and disagreed — the tile counts
+            confirmed orders (`successful()` in the analytics repository), the
+            donut counts every row so it can break them down by status. Two
+            unexplained totals for the same noun on one page reads as a bug.
+
+            Labelling both was chosen over making them agree, because neither
+            number is wrong for what it feeds: revenue is only earned on
+            confirmed bookings, so the KPI tile has to exclude pending and
+            cancelled ones, and a status breakdown that excluded them would
+            have nothing to break down. So the tile says "Confirmed", the donut
+            says "all statuses", and the drill-through carries status=success
+            to match the figure it was reached from.
+          */}
           <p
             className="mt-1.5 text-[14px] text-white/85"
             title={`${kpis.bookings.delta >= 0 ? "+" : ""}${kpis.bookings.delta.toFixed(0)}% vs the previous period`}
           >
-            <Link href={drillTo("/admin/bookings", range)} className="hover:underline">
-              No of Total Bookings
+            <Link href={drillTo("/admin/bookings", range, { status: "success" })} className="hover:underline">
+              No of Confirmed Bookings
             </Link>
           </p>
         </Card>
@@ -513,7 +528,7 @@ export function Dashboard({
       {/* ------------------------------------------------- Lower charts */}
       <div className="grid gap-5 lg:grid-cols-3">
         <Card>
-          <CardHeader title="Booking status" />
+          <CardHeader title="Booking status" action={<span className="text-[12px] text-ink-400">all statuses</span>} />
           <div className="p-5">
             <StatusDonut data={data.statusMix} />
           </div>

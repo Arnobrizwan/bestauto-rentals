@@ -30,9 +30,18 @@ export function StatusDonut({ data }: { data: { status: string; n: number }[] })
             />
           </PieChart>
         </ResponsiveContainer>
+        {/*
+          "all statuses", not "total": the KPI tile above counts confirmed
+          bookings only, so an unqualified "total" here read as a second,
+          contradictory figure for the same noun.
+        */}
         <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
           <p className="font-admin text-xl font-bold text-ink-900">{formatNumber(total)}</p>
-          <p className="text-[11px] text-ink-400">total</p>
+          <p className="text-[11px] leading-tight text-ink-400">
+            all
+            <br />
+            statuses
+          </p>
         </div>
       </div>
       <ul className="min-w-0 flex-1 space-y-2.5">
