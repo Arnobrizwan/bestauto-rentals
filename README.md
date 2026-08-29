@@ -122,17 +122,17 @@ to a deterministic engine when no vendor key is present. The brief asked for one
 four of the suggested kinds are here.
 
 ```mermaid
-flowchart TD
+flowchart LR
   IN["Customer input"] --> A1["Concierge<br/>chat with tool calling"]
   IN --> A2["Vehicle matcher<br/>free-text brief"]
   IN --> A3["Lead qualifier<br/>every enquiry, scored"]
   MT["Live metrics"] --> A4["Ops analyst<br/>dashboard brief"]
-  A1 --> G["Shared constraint gate<br/>+ deterministic fallback"]
+  A1 --> G["Shared constraint gate<br/>plus deterministic fallback"]
   A2 --> G
   A3 --> G
   A4 --> G
   G --> OUT["Answer grounded in live data"]
-  A1 -.->|"cannot answer"| HO["conversation.handoff<br/>→ automation"]
+  A1 --> HO["conversation.handoff<br/>hands off to automation"]
 ```
 
 Below, the matcher is asked for ten people going to Cox's Bazar and returns the only vehicle in the
