@@ -23,15 +23,15 @@ automation engine** wired through the middle.
 | Requirement | Where |
 |---|---|
 | Recreate the dashboard design accurately | `/admin` — greeting bar, three stat cards, Best Seller, Recent Transactions, Sales Analytics area chart, Sales by Countries choropleth, and the full grouped sidebar at the design's depth — see [Admin dashboard](#admin-dashboard) |
-| Dynamic data, not hard-coded UI | Every figure is a SQL aggregate over `bookings`. There is not one hard-coded number in the dashboard |
+| Dynamic data, not hard-coded UI | Every figure is a SQL aggregate over `bookings`. There is not one hard-coded number in the dashboard — and nothing hard-coded on the public site either: the fleet, the live offers, the headline branch count and average rating, and the home-page testimonials all come from the database |
 | Functional charts, statistics, tables, filters | Date-range filter (4 presets + custom range), fleet/booking/lead/customer tables with search, filter, sort and pagination — all URL-driven |
 | Responsive on mobile | Verified at 390px, 768px and 1440px+ |
 | Clean, reusable code | Repository → service → route → component layering; one design-token file; one `ui/` primitive set |
 | Wireframe → polished website | `/` — every wireframe section is present and redesigned |
 | Vehicle cards + rental search | `/cars` with faceted filtering, `/cars/[slug]` with a live booking form |
-| Interactions and functionality | Real bookings that persist, a Register form that feeds the AI-scored lead pipeline, reveal-on-scroll, testimonial carousel, favourites, AI matcher, chat concierge |
+| Interactions and functionality | Real bookings that persist, a Register form that feeds the AI-scored lead pipeline, reveal-on-scroll, a database-backed testimonial carousel with admin CRUD behind it, favourites, AI matcher, chat concierge |
 | **AI feature** | Four agents — see [AI layer](#ai-layer) |
-| **API / backend** | 16 REST endpoints, Zod-validated, rate limited — see [API](#api) |
+| **API / backend** | 34 REST routes across 50 method handlers, Zod-validated, rate limited, and fully described at `/api/openapi` — see [API](#api) |
 | **Automation workflow** | 8-rule event-driven engine with an audit trail — see [Automation](#automation) |
 | Access control | The dashboard and every admin API route are behind authentication — see [Authentication](#authentication) |
 
@@ -61,8 +61,9 @@ echo 'DATABASE_URL="postgresql://..."' > .env.local
 
 npm run db:push     # create the schema
 
-npm run db:seed     # creates no admin; visit /setup to make the first one   # 12 vehicles, 140 customers,
-                                                        # ~600 bookings, 42 scored leads, 8 rules
+npm run db:seed     # creates no admin; visit /setup to make the first one   # 12 vehicles, 97 units,
+                                                        # 140 customers, ~600 bookings, 42 scored
+                                                        # leads, 8 rules, 6 testimonials
 npm run dev         # sign in at /login with the account /setup created
 ```
 
@@ -221,7 +222,7 @@ run on a fork.
 
 ### What the unit tests cover
 
-`node:test`, no test framework, no database — 77 tests over the logic where a mistake is silent.
+`node:test`, no test framework, no database — 105 tests over the logic where a mistake is silent.
 They were written where bugs had actually been found, not where coverage was easiest:
 
 | File | Guards |
@@ -432,34 +433,72 @@ Automation failures are logged and swallowed: a broken workflow must never fail 
 
 ## API
 
-22 endpoints across 29 method handlers. Full machine-readable spec at **`/api/openapi`** — it now
-covers every route the app serves, verified by a diff in CI rather than by hand.
+34 routes across 50 method handlers. Full machine-readable spec at **`/api/openapi`** — it covers
+every route the app serves, verified by a diff in CI rather than by hand: `npm run test:routes` fails
+if a route exists without a spec entry, and if the spec describes a route that does not exist.
 
 ```
+Public
 GET    /api/health                     liveness + dependency + engine status
 GET    /api/vehicles                   faceted fleet search, paged
 GET    /api/vehicles/{slug}            one vehicle
 GET    /api/vehicles/facets            filter facets
-GET    /api/bookings                   list, filter, sort, paginate
-POST   /api/bookings                   create (re-prices + checks availability server-side)
 GET    /api/bookings/{reference}       one booking
-GET    /api/leads                      list
+POST   /api/bookings                   create (re-prices + checks availability server-side)
 POST   /api/leads                      create + AI score + fire automation
-PATCH  /api/leads                      update status
-GET    /api/analytics                  every dashboard aggregate in one call
+POST   /api/coupons/validate           preview a code — nothing is reserved or redeemed
 POST   /api/ai/chat                    concierge turn
+POST   /api/ai/chat/stream             the same turn, as server-sent events
 POST   /api/ai/recommend               vehicle matcher
-POST   /api/ai/qualify                 score a lead without persisting
-GET    /api/ai/insights                operations brief
+GET    /api/openapi                    this spec
+
+Admin — session required, mutations require the admin role
+GET    /api/analytics                  every dashboard aggregate in one call
+GET    /api/bookings                   list, filter, sort, paginate
+PATCH  /api/bookings/{reference}       confirm, cancel or reinstate — cancelling releases the unit
+GET    /api/leads                      list
+PATCH  /api/leads                      update status — this is what clears the hot-lead badge
+POST   /api/vehicles                   publish a car
+PATCH  /api/vehicles/{slug}            edit one
+DELETE /api/vehicles/{slug}            retire one
+PATCH  /api/units/{id}                 reposition a unit, or take it off the road
+PATCH  /api/documents/{id}             record a renewed statutory document
+PATCH  /api/maintenance/{id}           move a job, and the car's availability with it
+PATCH  /api/customers/{id}             correct contact details
+GET    /api/testimonials               every review, shown or hidden
+POST   /api/testimonials               publish one
+PATCH  /api/testimonials/{id}          edit one, or take it off the home page
+DELETE /api/testimonials/{id}          delete one
+GET    /api/coupons                    codes with their usage counts
+POST   /api/coupons                    create a discount code
+PATCH  /api/coupons/{id}               edit one
+DELETE /api/coupons/{id}               delete it, or stop it if it has redemptions
+GET    /api/team                       staff accounts
+POST   /api/team                       invite one
+PATCH  /api/team                       change a role or deactivate
+GET    /api/export                     CSV — bookings, leads, customers or vehicles
 GET    /api/automations                rules, runs, events, outbox, stats
 PATCH  /api/automations/{id}           enable/disable a rule
-POST   /api/webhooks/{source}          inbound receiver
-GET|POST /api/cron/daily-digest        scheduled job
+POST   /api/ai/qualify                 score a lead without persisting
+GET    /api/ai/insights                operations brief
+
+Auth
 POST   /api/auth/setup                 create the first admin (409 once one exists)
 POST   /api/auth/login                 sign in (rate limited 5 / 15 min)
+POST   /api/auth/password              change it, and re-issue this session's cookie
+DELETE /api/auth/password              sign out everywhere by bumping the session version
 POST   /api/auth/logout                sign out
-GET    /api/openapi                    this spec
+
+Machine
+POST   /api/webhooks/{source}          inbound receiver
+GET|POST /api/cron/daily-digest        scheduled job — GET is Vercel Cron, POST is "run it now"
+GET|POST /api/cron/drain-outbox        delivers queued messages with backoff
 ```
+
+**Every mutating endpoint follows one pattern**: `requireAdmin({ role: "admin" })`, Zod-validated
+input, then `revalidatePath` for any public page the write changes — `/`, `/cars`, `/cars/{slug}`.
+A write that skips revalidation leaves the page a customer books from stale for up to five minutes,
+which is why it is part of the pattern rather than a decision taken per route.
 
 Every route: `no-store`, Zod-validated input, per-client fixed-window rate limiting, body-size cap,
 and structured JSON errors. Writes are rate limited harder than reads (10/min for bookings, 8/min for
@@ -479,7 +518,7 @@ rather than a cached counter. A client cannot post its own total.
 src/
 ├── app/
 │   ├── (site)/          customer front-end   — home, fleet, vehicle, confirmation
-│   ├── admin/           dashboard            — 27 pages, 6 sidebar groups
+│   ├── admin/           dashboard            — 28 pages, 6 sidebar groups
 │   └── api/             HTTP surface
 ├── ai/
 │   ├── provider/        vendor adapters behind one interface
@@ -504,6 +543,8 @@ scripts/
 ├── build-world-map.mts  projects the TopoJSON atlas to SVG paths at build time
 ├── verify-routes.ts     sidebar and OpenAPI route coverage
 └── verify-qr.ts         QR golden test
+
+drizzle/                 the written record of each schema change, applied with db:push
 ```
 
 ### Data model
@@ -516,7 +557,12 @@ vehicles ──< vehicle_units ──< vehicle_documents   fitness · tax token 
                           └──< maintenance_jobs    why a unit is off the road
 bookings ──> vehicles, customers                   every dashboard figure aggregates from here
 coupons                                            the Bangladeshi promotional calendar
+testimonials                                       what customers said, as shown on the home page
 ```
+
+`testimonials` deliberately carries no foreign key to `vehicles`. Most reviews are about the service
+rather than one car, and retiring a car should not delete what a customer said about the trip they
+took in it — `vehicle_slug` is a nullable label, not a join.
 
 **Why it is laid out this way.** SQL is confined to `repositories/`; business rules that cross
 concerns (price a booking, take in a lead, publish an event) live in `services/`; routes do
@@ -575,6 +621,20 @@ the AI concierge, and get identical scoring and automation from both.
   the model re-checked its tools and contradicted the forgery, but that was the model choosing well
   rather than the architecture preventing it. Now the only thing a caller can introduce is their own
   next sentence.
+- **Availability has one definition, and stock has one owner.** `countOverlapping()` in
+  `server/repositories/bookings.ts` is the only overlap test; `countFreeUnits()` calls it rather than
+  restating the predicate, because a raw `sql` template binds Dates differently from drizzle's
+  `lte`/`gte` — which is how the site once quoted one availability and enforced another. The same
+  discipline applies to `vehicles.unitsAvailable`: opening a maintenance job and taking a unit off
+  the road on the units board both move it, clamped to `[0, unitsTotal]` so a double click cannot
+  invent stock, and a unit held by an open job is refused a manual release rather than returned to
+  stock twice.
+- **Defaults do not invent facts.** `vehicles.rating` defaulted to 4.6 and `testimonials.rating` to
+  5, so a row inserted directly — a seed, a hand-written fix, a backfill — arrived carrying a score
+  nobody had given. The vehicle default is now 0, which the public pages render as "New" rather than
+  as a number; the testimonial column has no default at all, because its rating is the one thing the
+  customer said and the carousel prints it verbatim. A rating-less insert now fails loudly.
+
 - **URL as state.** Every filter, sort and page writes to the query string, so results are
   shareable, back-button-correct and server-rendered.
 - **React Compiler clean.** `eslint` passes with the React Compiler rules on. Getting there meant
@@ -593,7 +653,7 @@ Every section of the supplied wireframe is implemented, in the same order:
 | Most popular car rental deals — 4 tabs, 8 cards, "Show more car", car count | Tabs hit `/api/vehicles` live; cards carry a working favourite toggle |
 | Why choose us — image + 3 features | Same |
 | Two panels | Corporate accounts and the long-rental discount ladder |
-| Trusted by Thousands of Happy Customer — carousel, dots, arrows | Same, auto-advancing and pausing on hover or focus |
+| Trusted by Thousands of Happy Customer — carousel, dots, arrows | Same, auto-advancing and pausing on hover or focus. The reviews come from the `testimonials` table and are managed at `/admin/testimonials`, not from an array in the component |
 | Footer — logo, vision, socials, About / Community / Socials, legal bar | Same |
 
 The wireframe's two empty panels and the "Register" link were the only places it left the content open;
