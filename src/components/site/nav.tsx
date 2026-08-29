@@ -64,19 +64,21 @@ export function SiteNav() {
             Register
           </Link>
           {/*
-            "Staff login", not "Log In". There is no customer account in this
-            product — /login is the operations dashboard's sign-in and says
-            "Staff accounts only" on arrival, so an unqualified "Log In" in a
-            customer nav promises an account that does not exist and walks the
-            only audience this nav has into a wall. Same rule the rest of the
-            build follows: the design owns the structure, the business owns the
-            words.
+            No sign-in entry at all on the customer site. There is no customer
+            account in this product — /login is the operations dashboard's
+            sign-in — so the nav previously offered visitors a door that was
+            never theirs: first as "Log In", which promised an account that
+            does not exist, then as "Staff login", which advertised the staff
+            area to everyone who is not staff. Staff reach the dashboard at
+            /admin, which the proxy sends to /login when there is no session,
+            so nothing is lost by not linking it. The customer CTA is the one
+            action this nav should carry.
           */}
           <Link
-            href="/login"
+            href="/cars"
             className="inline-flex h-10 items-center rounded-full border border-ink-200 bg-white px-5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
           >
-            Staff login
+            Book a car
           </Link>
         </div>
 
@@ -118,11 +120,11 @@ export function SiteNav() {
               Register
             </Link>
             <Link
-              href="/login"
+              href="/cars"
               onClick={() => setOpen(false)}
               className="mt-2 inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 text-[15px] font-medium text-ink-900"
             >
-              Staff login
+              Book a car
             </Link>
             <Link
               href="/cars"

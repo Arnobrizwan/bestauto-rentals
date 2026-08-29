@@ -34,7 +34,10 @@ const COLUMNS = [
     links: [
       { label: "Rental terms", href: "/terms" },
       { label: "Privacy policy", href: "/privacy" },
-      { label: "Staff sign-in", href: "/login" },
+      // Deliberately not a staff sign-in link. Staff go to /admin, which the
+      // proxy sends to /login; a customer has no reason to be shown the door
+      // to the operations dashboard.
+      { label: "Contact us", href: "/#register" },
     ],
   },
 ];

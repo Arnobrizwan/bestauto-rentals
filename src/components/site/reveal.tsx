@@ -8,74 +8,80 @@ import { useEffect } from "react";
  * One observer for the whole page rather than a wrapper component per element,
  * so adding an animation to a section costs one attribute and no extra DOM.
  * Elements are visible by default under `prefers-reduced-motion` via CSS.
+ *
+ * It watches for the elements rather than looking for them once.
+ *
+ * This component is rendered by the site layout, and the layout's effect runs
+ * before the page's own subtree is in the DOM — it sits outside that Suspense
+ * boundary, so a single `querySelectorAll` at mount can and does return
+ * nothing. The layout then never remounts across client-side navigation, so
+ * that one empty scan was the only one that ever happened: every section on
+ * the home page stayed at opacity 0, and arriving from /privacy or /terms gave
+ * a page that looked slow and dead rather than obviously broken.
+ *
+ * A MutationObserver removes the timing question entirely. Nodes are picked up
+ * whenever they appear — streamed in, hydrated late, or swapped in by the
+ * router — so there is no moment this has to guess at and no pathname to
+ * track. The first scan is deferred by a frame because setting `data-revealed`
+ * on a node React has not hydrated yet is reported as a hydration mismatch.
  */
 export function RevealOnScroll() {
   useEffect(() => {
     let cancelled = false;
-    const cleanups: (() => void)[] = [];
+    let intersection: IntersectionObserver | undefined;
+    let mutation: MutationObserver | undefined;
+    let failsafe: number | undefined;
 
-    /**
-     * Waits for hydration to finish before touching anything.
-     *
-     * This component is rendered by the site layout, which is outside the
-     * page's own Suspense boundary, so its effect fires while the streamed
-     * page subtree can still be hydrating. Setting `data-revealed` on a node
-     * React has not hydrated yet is an attribute the server HTML does not
-     * carry, and React reports every one of them as a hydration mismatch —
-     * the home page logged one per revealed section. Deferring past `load`
-     * and a frame puts the mutation after hydration has committed.
-     */
-    const whenHydrated = (run: () => void) => {
-      const go = () => requestAnimationFrame(() => !cancelled && run());
-      if (document.readyState === "complete") {
-        go();
-        return;
-      }
-      window.addEventListener("load", go, { once: true });
-      cleanups.push(() => window.removeEventListener("load", go));
+    const query = () =>
+      Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]")).filter(
+        (n) => !n.hasAttribute("data-revealed"),
+      );
+
+    const reveal = (el: HTMLElement, delay = 0) => {
+      window.setTimeout(() => el.setAttribute("data-revealed", "true"), delay);
     };
 
-    whenHydrated(() => {
-      const nodes = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-reveal]"),
-      );
-      if (!nodes.length) return;
+    const frame = requestAnimationFrame(() => {
+      if (cancelled) return;
 
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
-        return;
-      }
-
-      const revealAll = () =>
-        nodes.forEach((n) => n.setAttribute("data-revealed", "true"));
-
-      // No observer, no reveal — and the CSS starts these elements at opacity 0,
-      // so without this the page is simply blank.
-      if (!("IntersectionObserver" in window)) {
-        revealAll();
-        return;
-      }
+      // No animation wanted, and nothing to observe for: show everything now
+      // and keep showing anything that arrives later.
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // No observer, no reveal — and the CSS starts these elements at opacity
+      // 0, so without this the page is simply blank.
+      const revealImmediately = reducedMotion || !("IntersectionObserver" in window);
 
       let anyRevealed = false;
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (!entry.isIntersecting) continue;
-            const el = entry.target as HTMLElement;
-            const delay = Number(el.dataset.revealDelay ?? 0);
-            anyRevealed = true;
-            window.setTimeout(
-              () => el.setAttribute("data-revealed", "true"),
-              delay,
-            );
-            observer.unobserve(el);
-          }
-        },
-        { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
-      );
+      if (!revealImmediately) {
+        intersection = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              const el = entry.target as HTMLElement;
+              anyRevealed = true;
+              reveal(el, Number(el.dataset.revealDelay ?? 0));
+              intersection?.unobserve(el);
+            }
+          },
+          { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
+        );
+      }
 
-      nodes.forEach((n) => observer.observe(n));
+      // Already-revealed nodes are filtered out by `query`, so a rescan never
+      // restarts an animation the visitor has already watched, and observing
+      // the same element twice is a no-op in any case.
+      const scan = () => {
+        for (const node of query()) {
+          if (revealImmediately) reveal(node);
+          else intersection?.observe(node);
+        }
+      };
+
+      scan();
+
+      mutation = new MutationObserver(scan);
+      mutation.observe(document.body, { childList: true, subtree: true });
 
       // Failsafe for contexts where the observer exists but never fires — an
       // iframe whose viewport never intersects the root is the one that bit us,
@@ -84,19 +90,19 @@ export function RevealOnScroll() {
       // by now the observer is not working, so show everything rather than
       // animate nothing. A single reveal is enough to prove it does work, which
       // is why this checks the flag instead of unconditionally revealing.
-      const failsafe = window.setTimeout(() => {
-        if (!anyRevealed) revealAll();
-      }, 1200);
-
-      cleanups.push(() => {
-        window.clearTimeout(failsafe);
-        observer.disconnect();
-      });
+      if (!revealImmediately) {
+        failsafe = window.setTimeout(() => {
+          if (!anyRevealed) query().forEach((n) => reveal(n));
+        }, 1500);
+      }
     });
 
     return () => {
       cancelled = true;
-      cleanups.forEach((fn) => fn());
+      cancelAnimationFrame(frame);
+      if (failsafe !== undefined) window.clearTimeout(failsafe);
+      intersection?.disconnect();
+      mutation?.disconnect();
     };
   }, []);
 
