@@ -185,12 +185,13 @@ socket. `next build` also evaluates the database client while collecting page da
 placeholder connection string it never connects with, and a separate `HAS_DATABASE` flag — not the
 presence of `DATABASE_URL` — decides whether the seeded steps run.
 
-**Deployment is a manual `vercel --prod`, not a Git hook.** The Vercel project has no repository
-connected, so a green CI run and a push to `main` deploy nothing — production sat five commits
-behind before this was noticed, which is the worst kind of stale because every other signal was
-green. Until the repository is connected in the Vercel dashboard, shipping means running the deploy
-explicitly. The workflow carries a deploy job for that; it stays inert unless `VERCEL_TOKEN` is
-configured, rather than failing every run on a fork.
+**Deployment is Vercel's Git integration, connected to this repository.** It was not, for most of
+the project's life: the Vercel project had no repository attached, so a green CI run and a push to
+`main` deployed nothing and production sat five commits behind — the worst kind of stale, because
+every other signal was green. Every deploy had to be an explicit `vercel --prod`. The repository is
+connected now, so a push to `main` ships. The workflow also carries an explicit deploy job for when
+that is switched off; it stays inert unless `VERCEL_TOKEN` is configured, rather than failing every
+run on a fork.
 
 ### What the unit tests cover
 
