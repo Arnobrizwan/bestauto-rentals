@@ -597,8 +597,14 @@ Worth stating plainly rather than leaving to be discovered:
   (`src/server/repositories/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
 - **Email and SMS queue to an outbox.** Delivery is a config change, not a code change.
-- **The concierge is not streamed.** Responses arrive whole. Streaming is a route change; the
-  provider interface already isolates it.
+- **The concierge is not streamed.** Responses arrive whole. The provider interface isolates the
+  vendor call, and a streaming adapter over the OpenAI-compatible endpoint was prototyped and
+  measured against the live model — twelve chunks, first token at 1.1s against 1.9s for the whole
+  reply, so it would cut perceived latency by roughly 40%. What it is not is a route change: the
+  concierge resolves tools before it can say anything useful, so the turn worth streaming is the last
+  one, and reaching it means restructuring the tool loop so the final call streams while the earlier
+  ones do not. That is the honest reason it is still here rather than done — a half-streamed reply
+  that stalls mid-sentence on a tool call is worse than one that arrives whole.
 
 ---
 
