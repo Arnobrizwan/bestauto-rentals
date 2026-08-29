@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CouponManager, CouponRowActions } from "@/components/admin/coupon-manager";
 import { DataTable, Td, Tr } from "@/components/admin/data-table";
 import { StatRow } from "@/components/admin/stat-row";
 import { PageHeader } from "@/components/admin/table";
@@ -24,6 +25,8 @@ export default async function PromoPage() {
         subtitle="Discount codes and their validity windows. The calendar here is the Bangladeshi one — Eid travel, the wedding season and the monsoon trough."
       />
 
+      <CouponManager />
+
       <StatRow
         stats={[
           { label: "Live offers", value: formatNumber(live.length), tone: "success" },
@@ -44,6 +47,7 @@ export default async function PromoPage() {
           { label: "Window" },
           { label: "Redeemed", align: "right" },
           { label: "Status", align: "right" },
+          { label: "Actions", align: "right" },
         ]}
         empty={{ title: "No offers", detail: "No discount codes have been created." }}
       >
@@ -82,6 +86,9 @@ export default async function PromoPage() {
               ) : (
                 <Badge tone="softSuccess">live</Badge>
               )}
+            </Td>
+            <Td align="right">
+              <CouponRowActions id={c.id} code={c.code} active={c.active} />
             </Td>
           </Tr>
         ))}

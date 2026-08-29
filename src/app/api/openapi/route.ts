@@ -161,6 +161,40 @@ export async function GET(req: Request) {
         get: { summary: "Scheduled digest (Bearer CRON_SECRET)", responses: { "200": { description: "Ran" }, "401": errorResponse } },
         post: { summary: "Trigger the digest manually from the admin UI", responses: { "200": { description: "Ran" } } },
       },
+      "/api/maintenance/{id}": {
+        patch: {
+          summary: "Move a maintenance job, and the car's availability with it (admin)",
+          description:
+            "Opening a job takes a unit out of stock and closing one puts it back. Before this, marking a car off road had no path to unitsAvailable, so a car on a garage ramp stayed bookable.",
+          responses: { "200": { description: "the new status, and whether stock moved" }, "401": errorResponse, "404": errorResponse },
+        },
+      },
+      "/api/coupons": {
+        get: {
+          summary: "List every discount code (admin)",
+          responses: { "200": { description: "codes with their usage counts" }, "401": errorResponse },
+        },
+        post: {
+          summary: "Create a discount code (admin)",
+          description:
+            "Codes were seed-only until now: a leaked code could not be stopped without a redeploy. The code is uppercased on write because redemption looks it up case-insensitively.",
+          responses: { "201": { description: "the created code" }, "401": errorResponse, "422": errorResponse },
+        },
+      },
+      "/api/coupons/{id}": {
+        patch: {
+          summary: "Edit a discount code (admin)",
+          description:
+            "`code` cannot be changed — bookings record the code they were priced with, and renaming a live one would orphan that history.",
+          responses: { "200": { description: "the updated code" }, "401": errorResponse, "404": errorResponse },
+        },
+        delete: {
+          summary: "Stop or delete a discount code (admin)",
+          description:
+            "Deleted only if it has never been redeemed; a code with history is deactivated instead, so the bookings priced with it stay explainable.",
+          responses: { "200": { description: "deleted or deactivated" }, "401": errorResponse, "404": errorResponse },
+        },
+      },
       "/api/coupons/validate": {
         post: {
           summary: "Preview a discount code",

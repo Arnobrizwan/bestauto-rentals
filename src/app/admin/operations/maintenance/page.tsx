@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { DataTable, Td, Tr } from "@/components/admin/data-table";
+import { MaintenanceActions } from "@/components/admin/maintenance-actions";
 import { StatRow } from "@/components/admin/stat-row";
 import { FilterTabs, PageHeader } from "@/components/admin/table";
 import { Badge, Skeleton } from "@/components/ui";
@@ -66,6 +67,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
           { label: "Opened" },
           { label: "Status" },
           { label: "Cost", align: "right" },
+          { label: "Actions", align: "right" },
         ]}
         empty={{ title: "No jobs match", detail: "Nothing in the workshop under this filter." }}
       >
@@ -96,6 +98,9 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
             </Td>
             <Td align="right" strong>
               {formatCurrency(j.cost)}
+            </Td>
+            <Td align="right">
+              <MaintenanceActions id={j.id} status={j.status} />
             </Td>
           </Tr>
         ))}

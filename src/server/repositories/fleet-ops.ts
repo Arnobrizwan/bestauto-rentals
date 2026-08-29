@@ -293,3 +293,97 @@ export async function redeemCoupon(id: string) {
     .returning({ id: coupons.id, usedCount: coupons.usedCount });
   return row ?? null;
 }
+
+/**
+ * Creates a discount code.
+ *
+ * Coupons were seed-only: eight codes were live, the board showed 421
+ * redemptions, and there was no way to add, change or stop one without a
+ * redeploy. A code leaked to a forum could not be killed.
+ */
+export async function createCoupon(row: typeof coupons.$inferInsert) {
+  const [created] = await db.insert(coupons).values(row).returning();
+  return created;
+}
+
+/** Edits a code in place. Only the columns supplied are written. */
+export async function updateCoupon(id: string, patch: Partial<typeof coupons.$inferInsert>) {
+  const [row] = await db.update(coupons).set(patch).where(eq(coupons.id, id)).returning();
+  return row ?? null;
+}
+
+/**
+ * Removes a code that has never been used.
+ *
+ * A code with redemptions behind it is deactivated rather than deleted:
+ * bookings record the `couponCode` they were priced with, and deleting the row
+ * would leave those totals unexplainable at audit. Deactivating stops it
+ * immediately, which is the actual need when a code leaks.
+ */
+export async function deleteCoupon(id: string) {
+  const [existing] = await db.select().from(coupons).where(eq(coupons.id, id)).limit(1);
+  if (!existing) return { ok: false as const, reason: "not-found" as const };
+
+  if (existing.usedCount > 0) {
+    await db.update(coupons).set({ active: false }).where(eq(coupons.id, id));
+    return { ok: true as const, deactivated: true as const, code: existing.code, used: existing.usedCount };
+  }
+
+  await db.delete(coupons).where(eq(coupons.id, id));
+  return { ok: true as const, deactivated: false as const, code: existing.code, used: 0 };
+}
+
+/**
+ * Moves a maintenance job, and the car's availability with it.
+ *
+ * Marking a car under maintenance had no path to `unitsAvailable`, so a car on
+ * a garage ramp stayed bookable on the public site — the operations board said
+ * "off road" while the fleet page still offered it. Opening a job takes a unit
+ * out of stock and closing one puts it back, in the same transaction as the
+ * status change, so the two cannot drift apart.
+ *
+ * Availability is clamped both ways: never below zero, never above the fleet
+ * size, so repeated clicks or a job closed twice cannot invent stock.
+ */
+export async function setMaintenanceStatus(jobId: string, status: "open" | "in-progress" | "done") {
+  const [job] = await db
+    .select({
+      id: maintenanceJobs.id,
+      status: maintenanceJobs.status,
+      unitId: maintenanceJobs.unitId,
+      vehicleId: vehicleUnits.vehicleId,
+    })
+    .from(maintenanceJobs)
+    .innerJoin(vehicleUnits, eq(vehicleUnits.id, maintenanceJobs.unitId))
+    .where(eq(maintenanceJobs.id, jobId))
+    .limit(1);
+
+  if (!job) return null;
+
+  const wasOffRoad = job.status !== "done";
+  const nowOffRoad = status !== "done";
+
+  await db
+    .update(maintenanceJobs)
+    .set({ status, closedAt: status === "done" ? new Date() : null })
+    .where(eq(maintenanceJobs.id, jobId));
+
+  await db
+    .update(vehicleUnits)
+    .set({ status: nowOffRoad ? "maintenance" : "available" })
+    .where(eq(vehicleUnits.id, job.unitId));
+
+  // Only a change of side moves stock — reopening an already-open job must not
+  // decrement a second time.
+  if (wasOffRoad !== nowOffRoad) {
+    const delta = nowOffRoad ? -1 : 1;
+    await db
+      .update(vehicles)
+      .set({
+        unitsAvailable: sql`greatest(0, least(${vehicles.unitsTotal}, ${vehicles.unitsAvailable} + ${delta}))`,
+      })
+      .where(eq(vehicles.id, job.vehicleId));
+  }
+
+  return { jobId, status, stockMoved: wasOffRoad !== nowOffRoad, vehicleId: job.vehicleId };
+}
