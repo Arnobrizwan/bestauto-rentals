@@ -18,14 +18,28 @@ import { cn } from "@/lib/utils";
  * booked out for those days sat in the results looking available. The listing
  * query now takes the range, and this is the control that sets it.
  */
+
+/**
+ * The date part of whatever the URL carries.
+ *
+ * The home page search submits a datetime — `2026-09-01T10:00`, because it
+ * collects a time as well — and `<input type="date">` accepts only a bare
+ * `yyyy-MM-dd`. Handed anything else it silently renders empty, so arriving
+ * from a home page search showed two blank `dd/mm/yyyy` fields above a caption
+ * saying the results were filtered to those very dates.
+ */
+const dateOf = (value?: string) => (value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : "");
+
+/** The `T10:00` half, so editing a date does not quietly discard the time. */
+const timeOf = (value?: string) => (value && value.length > 10 ? value.slice(10) : "");
 export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const [from, setFrom] = useState(pickup ?? "");
-  const [to, setTo] = useState(dropoff ?? "");
+  const [from, setFrom] = useState(dateOf(pickup));
+  const [to, setTo] = useState(dateOf(dropoff));
 
   // The URL is the source of truth. When it changes underneath these inputs —
   // the back button, a filter reset elsewhere on the page — the caller keys
@@ -34,9 +48,11 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
 
   function apply(nextFrom: string, nextTo: string) {
     const next = new URLSearchParams(params.toString());
-    if (nextFrom) next.set("pickup", nextFrom);
+    // Put the time back on, so a date edit round-trips the value the home
+    // page search put there rather than truncating it.
+    if (nextFrom) next.set("pickup", `${nextFrom}${timeOf(pickup)}`);
     else next.delete("pickup");
-    if (nextTo) next.set("dropoff", nextTo);
+    if (nextTo) next.set("dropoff", `${nextTo}${timeOf(dropoff)}`);
     else next.delete("dropoff");
     next.delete("page");
     startTransition(() => router.replace(`${pathname}?${next.toString()}`, { scroll: false }));
@@ -46,7 +62,7 @@ export function DateRangeFilter({ pickup, dropoff }: { pickup?: string; dropoff?
   // half-range would silently show the whole catalogue again.
   const complete = Boolean(from && to);
   const ordered = complete && from <= to;
-  const changed = from !== (pickup ?? "") || to !== (dropoff ?? "");
+  const changed = from !== dateOf(pickup) || to !== dateOf(dropoff);
 
   const field =
     "h-9 rounded-lg border border-line bg-white px-2.5 text-[13px] text-ink-900 outline-none focus:border-brand-300";
