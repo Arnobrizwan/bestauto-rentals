@@ -271,8 +271,13 @@ export function classifyIntent(message: string, slots: Slots): Intent {
     return hasVehicle ? "availability" : "search";
   }
 
+  // `driv` rather than `drive`, and the price adjectives people actually open
+  // with. "Something cheap for city driving" matched none of these — no "car",
+  // and \bdrive\b does not match "driving" — so a plain rental brief fell all
+  // the way through to the out-of-scope guard and the search guardrail never
+  // fired for it.
   if (
-    /\b(car|vehicle|suv|hatchback|sedan|coupe|convertible|seater|drive|rent|hire|need|looking for|recommend|suggest|show me|options)\b/.test(
+    /\b(car|vehicle|suv|hatchback|sedan|coupe|convertible|seater|driv(?:e|es|ing|er)|rent|hire|need|looking for|recommend|suggest|show me|options|cheap(?:est)?|affordable|inexpensive|economical|budget)\b/.test(
       text,
     )
   ) {
@@ -290,7 +295,7 @@ export function classifyIntent(message: string, slots: Slots): Intent {
   if (hasSlot) return "search";
 
   // Anything with no rental vocabulary and no slot at all.
-  if (text.length > 12 && !/\b(car|rent|hire|drive|book|price|day)\b/.test(text)) return "out_of_scope";
+  if (text.length > 12 && !/\b(car|rent|hire|driv(?:e|ing|er)|book|price|day)\b/.test(text)) return "out_of_scope";
 
   return "unknown";
 }
