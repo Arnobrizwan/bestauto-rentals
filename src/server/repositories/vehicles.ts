@@ -14,6 +14,9 @@ export type VehicleFilters = {
   priceMax?: number;
   location?: string;
   q?: string;
+  /** Both required together: only vehicles with a unit free across the range. */
+  availableFrom?: Date;
+  availableTo?: Date;
   sort?: "popular" | "price-asc" | "price-desc" | "rating" | "newest";
   limit?: number;
   offset?: number;
@@ -45,6 +48,24 @@ function buildWhere(f: VehicleFilters): SQL | undefined {
       sql`(lower(${vehicles.name}) like ${needle} or lower(${vehicles.brand}) like ${needle} or lower(${vehicles.bodyType}) like ${needle})`,
     );
   }
+
+  // Real availability, not just "is it in the catalogue".
+  //
+  // The fleet page displayed the dates the visitor searched and then listed
+  // every car regardless of them, so a car already booked out for those days
+  // sat there looking bookable. A model is offered only while at least one of
+  // its units is free for the whole range — the same overlap test the booking
+  // service uses, so the list and the checkout cannot disagree.
+  if (f.availableFrom && f.availableTo) {
+    clauses.push(sql`${vehicles.unitsTotal} > (
+      select count(*) from ${bookings}
+      where ${bookings.vehicleId} = ${vehicles.id}
+        and ${bookings.status} <> 'cancelled'
+        and ${bookings.pickupAt} <= ${f.availableTo}
+        and ${bookings.dropoffAt} >= ${f.availableFrom}
+    )`);
+  }
+
   return clauses.length ? and(...clauses) : undefined;
 }
 

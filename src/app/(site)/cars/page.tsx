@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { DateRangeFilter } from "@/components/site/date-range-filter";
 import { FleetFilters, SortSelect } from "@/components/site/fleet-filters";
 import { VehicleCard, type VehicleCardData } from "@/components/site/vehicle-card";
 import { EmptyState, Skeleton } from "@/components/ui";
-import { formatDate } from "@/lib/utils";
 import { listFacets, listVehicles } from "@/server/repositories/vehicles";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,18 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
   const params = await searchParams;
 
   const page = Math.max(1, Number(first(params.page) ?? 1) || 1);
+
+  // The searched dates now narrow the fleet instead of only labelling it. Both
+  // ends are required and must be ordered; a half or reversed range is ignored
+  // rather than silently listing everything as if no dates were given.
+  const pickupParam = first(params.pickup);
+  const dropoffParam = first(params.dropoff);
+  const from = pickupParam ? new Date(pickupParam) : null;
+  const to = dropoffParam ? new Date(dropoffParam) : null;
+  const validRange =
+    from && to && !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && from <= to;
+  if (validRange) to.setHours(23, 59, 59, 999);
+
   const filters = {
     segment: first(params.segment),
     brand: first(params.brand),
@@ -38,6 +50,8 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
     seatsMin: first(params.seatsMin) ? Number(first(params.seatsMin)) : undefined,
     priceMax: first(params.priceMax) ? Number(first(params.priceMax)) : undefined,
     sort: (first(params.sort) ?? "popular") as "popular",
+    availableFrom: validRange ? from : undefined,
+    availableTo: validRange ? to : undefined,
   };
 
   const [{ items, total }, facets] = await Promise.all([
@@ -64,8 +78,6 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
   }));
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const pickup = first(params.pickup);
-  const dropoff = first(params.dropoff);
 
   function pageHref(n: number) {
     const next = new URLSearchParams();
@@ -95,14 +107,13 @@ export default async function CarsPage({ searchParams }: { searchParams: SearchP
             {facets.count} cars across {facets.locations.length} branches. Rates include a driver and 120km a day inside
             Dhaka; fuel is billed at cost.
           </p>
-          {pickup && dropoff && (
-            <p className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-[13px] text-ink-500">
-              <svg viewBox="0 0 24 24" className="size-4 text-brand-400" fill="none" stroke="currentColor" strokeWidth="1.7">
-                <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M8 3v4M16 3v4M4 11h16" />
-              </svg>
-              {formatDate(pickup, { day: "numeric", month: "short" })} &rarr;{" "}
-              {formatDate(dropoff, { day: "numeric", month: "short" })}
-              {filters.location ? ` · ${filters.location}` : ""}
+          <Suspense fallback={<Skeleton className="mt-4 h-14 w-96 max-w-full rounded-xl" />}>
+            <DateRangeFilter key={`${pickupParam ?? ""}-${dropoffParam ?? ""}`} pickup={pickupParam} dropoff={dropoffParam} />
+          </Suspense>
+          {validRange && (
+            <p className="mt-2 text-[13px] text-ink-400">
+              Showing cars with a unit free for these dates
+              {filters.location ? ` at ${filters.location}` : ""}.
             </p>
           )}
         </header>
