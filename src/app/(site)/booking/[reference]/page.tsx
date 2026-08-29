@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge, ButtonLink } from "@/components/ui";
+import { getCurrentAdmin } from "@/lib/auth/server";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getBookingByReference } from "@/server/repositories/bookings";
 
@@ -19,6 +20,16 @@ export default async function BookingConfirmationPage({ params }: { params: Para
   if (!row) notFound();
 
   const { booking, vehicle, customer } = row;
+
+  // This is the page a customer lands on after paying, and it linked them
+  // straight into the staff operations dashboard. The proxy bounced them to a
+  // staff-only sign-in, so nothing leaked — but it advertised an admin area to
+  // someone who has no business in it and dead-ended them at a login they can
+  // never pass. The shortcut is genuinely useful to an operator opening a
+  // customer's confirmation, so it is shown to a signed-in admin and to nobody
+  // else. The page is already force-dynamic, so reading the session here costs
+  // no prerendering.
+  const admin = await getCurrentAdmin();
 
   const lines = [
     { label: "Reference", value: booking.reference },
@@ -106,9 +117,11 @@ export default async function BookingConfirmationPage({ params }: { params: Para
             <ButtonLink href="/cars" variant="dark">
               Browse more cars
             </ButtonLink>
-            <ButtonLink href="/admin/bookings" variant="outline">
-              See it in the dashboard
-            </ButtonLink>
+            {admin && (
+              <ButtonLink href={`/admin/bookings?q=${encodeURIComponent(booking.reference)}`} variant="outline">
+                Open in the dashboard
+              </ButtonLink>
+            )}
           </div>
         </div>
 
