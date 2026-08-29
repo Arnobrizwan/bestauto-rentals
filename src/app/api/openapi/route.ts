@@ -116,6 +116,14 @@ export async function GET(req: Request) {
           responses: { "200": { description: "Reply" }, "422": errorResponse, "429": { description: "Rate limited" } },
         },
       },
+      "/api/ai/chat/stream": {
+        post: {
+          summary: "The concierge, streamed",
+          description:
+            "Same contract as /api/ai/chat but replies as server-sent events: `delta` carries text as the model writes it, `reset` means the words so far belonged to a turn that then called a tool or to a model call that was replaced by the rules engine, and `done` carries the full reply. A client handling only `done` still works. The rules engine composes instantly, so it sends `done` with no deltas rather than chunking a finished string.",
+          responses: { "200": { description: "text/event-stream" }, "422": errorResponse, "429": { description: "Rate limited" } },
+        },
+      },
       "/api/ai/recommend": { post: { summary: "AI vehicle recommendation", responses: { "200": { description: "Ranked picks with reasoning" } } } },
       "/api/ai/qualify": { post: { summary: "Score a lead without persisting", responses: { "200": { description: "Score, tier, signals, next action" } } } },
       "/api/ai/insights": { get: { summary: "AI operations brief over the analytics snapshot", responses: { "200": { description: "Insights" } } } },

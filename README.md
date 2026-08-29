@@ -230,6 +230,23 @@ something unusable, the request **degrades to the rules engine** and reports `de
 response rather than erroring. The engine that actually answered is surfaced in the admin topbar, on
 each chat message and in the API response.
 
+### Streaming
+
+`POST /api/ai/chat/stream` returns the reply as server-sent events. Against the hosted model that is
+a first word at roughly a second rather than a wall of text at two.
+
+Every turn is streamed, not only the last one, because which turn *is* last is not knowable until it
+comes back without a tool call — by which point the chance to stream it has gone. That makes tool
+calls part of the streamed contract: they arrive fragmented and indexed, the name in one chunk and
+the arguments across several, so they are accumulated by index and parsed only at the end. A turn
+that emits a sentence and *then* asks for a tool sends a `reset`, because those words were not the
+answer; so does a model call that fails and is replaced by the rules engine.
+
+The rules engine composes in microseconds, so it sends one `done` and no deltas. Chunking a finished
+string to look like streaming would be theatre. `/api/ai/chat` is unchanged and still returns the
+whole reply in one response — a client that handles only the `done` event behaves identically on
+either route.
+
 ### Tools
 
 One registry (`src/ai/tools/`) produces the JSON Schemas handed to the model, the runtime executors,
@@ -597,14 +614,7 @@ Worth stating plainly rather than leaving to be discovered:
   (`src/server/repositories/rate-limit.ts`).
 - **Payments are represented, not processed.** Bookings record a payment method; no card is taken.
 - **Email and SMS queue to an outbox.** Delivery is a config change, not a code change.
-- **The concierge is not streamed.** Responses arrive whole. The provider interface isolates the
-  vendor call, and a streaming adapter over the OpenAI-compatible endpoint was prototyped and
-  measured against the live model — twelve chunks, first token at 1.1s against 1.9s for the whole
-  reply, so it would cut perceived latency by roughly 40%. What it is not is a route change: the
-  concierge resolves tools before it can say anything useful, so the turn worth streaming is the last
-  one, and reaching it means restructuring the tool loop so the final call streams while the earlier
-  ones do not. That is the honest reason it is still here rather than done — a half-streamed reply
-  that stalls mid-sentence on a tool call is worse than one that arrives whole.
+
 
 ---
 

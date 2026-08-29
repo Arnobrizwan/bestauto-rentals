@@ -102,7 +102,7 @@ export function Concierge() {
     setError(null);
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch("/api/ai/chat/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
         // Only the new turn. The server reads the conversation back from the
@@ -111,7 +111,7 @@ export function Concierge() {
         body: JSON.stringify({ sessionId: sessionRef.current, message: trimmed }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         throw new Error(
           res.status === 429
             ? "That's a lot of questions at once — give me a few seconds."
@@ -119,32 +119,79 @@ export function Concierge() {
         );
       }
 
-      const data = (await res.json()) as {
-        message: string;
-        vehicles: VehicleChip[];
-        suggestions: string[];
-        engine: Message["engine"];
-        latencyMs: number;
-        toolCalls: { name: string }[];
-        leadCaptured?: { tier: string; score: number };
-      };
+      // The assistant bubble appears empty and fills as the words arrive.
+      const replyId = `a_${nextId()}`;
+      setMessages((prev) => [...prev, { id: replyId, role: "assistant", content: "" }]);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `a_${nextId()}`,
-          role: "assistant",
-          content: data.message,
-          vehicles: data.vehicles,
-          suggestions: data.suggestions,
-          engine: data.engine,
-          latencyMs: data.latencyMs,
-          tools: data.toolCalls.map((t) => t.name),
-          leadCaptured: data.leadCaptured,
-        },
-      ]);
+      const patch = (change: Partial<Message>) =>
+        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, ...change } : m)));
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamed = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // An event ends at a blank line, and one read can hold a fraction of
+        // an event or several at once.
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const event of events) {
+          const line = event.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+
+          let payload: {
+            type: string;
+            text?: string;
+            error?: string;
+            message?: string;
+            vehicles?: VehicleChip[];
+            suggestions?: string[];
+            engine?: Message["engine"];
+            latencyMs?: number;
+            toolCalls?: { name: string }[];
+            leadCaptured?: { tier: string; score: number };
+          };
+          try {
+            payload = JSON.parse(line.slice(5).trim());
+          } catch {
+            continue;
+          }
+
+          if (payload.type === "delta" && payload.text) {
+            streamed += payload.text;
+            patch({ content: streamed });
+          } else if (payload.type === "reset") {
+            // Those words belonged to a turn that then called a tool, or to a
+            // model call that failed and was replaced. They are not the answer.
+            streamed = "";
+            patch({ content: "" });
+          } else if (payload.type === "error") {
+            throw new Error(payload.error ?? "The assistant is unavailable right now.");
+          } else if (payload.type === "done") {
+            patch({
+              content: payload.message ?? streamed,
+              vehicles: payload.vehicles,
+              suggestions: payload.suggestions,
+              engine: payload.engine,
+              latencyMs: payload.latencyMs,
+              tools: payload.toolCalls?.map((t) => t.name),
+              leadCaptured: payload.leadCaptured,
+            });
+          }
+        }
+      }
+
       if (!open) setUnread(true);
     } catch (err) {
+      // Drop a bubble that never received any words, so a failure does not
+      // leave an empty assistant message sitting in the transcript.
+      setMessages((prev) => prev.filter((m) => !(m.role === "assistant" && m.content === "")));
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setBusy(false);

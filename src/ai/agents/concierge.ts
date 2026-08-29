@@ -643,9 +643,20 @@ export async function rulesConcierge(
    Hosted tool-calling loop
    =========================================================================== */
 
+/**
+ * Where a streamed turn sends its words.
+ *
+ * `onReset` exists for the turn that emits a sentence and *then* asks for a
+ * tool — uncommon, but it does happen, and the words already shown belong to a
+ * turn that is not the answer. The caller is told to discard them rather than
+ * leaving a stale half-sentence above the real reply.
+ */
+export type ConciergeStreamSink = { onDelta: (delta: string) => void; onReset: () => void };
+
 async function hostedConcierge(
   turns: ChatTurn[],
   ctx: ToolContext,
+  sink?: ConciergeStreamSink,
 ): Promise<Omit<ConciergeReply, "engine" | "latencyMs">> {
   const provider = await resolveProviderForRequest();
   if (!provider) throw new Error("No provider");
@@ -657,16 +668,39 @@ async function hostedConcierge(
   let text = "";
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-    const res = await provider.complete({
+    const request = {
       system: CONCIERGE_SYSTEM_V3,
       messages,
       tools: TOOL_SPECS,
       maxTokens: 900,
       temperature: 0.4,
-    });
+    };
+
+    // Streamed when the caller wants words as they arrive and the provider
+    // can produce them. Every turn is streamed rather than only the last,
+    // because which turn is last is not knowable until it comes back without
+    // a tool call — by which point the chance to stream it has gone.
+    let res;
+    let streamedThisTurn = false;
+    if (sink && provider.stream) {
+      const iterator = provider.stream(request);
+      let step = await iterator.next();
+      while (!step.done) {
+        streamedThisTurn = true;
+        sink.onDelta(step.value.delta);
+        step = await iterator.next();
+      }
+      res = step.value;
+    } else {
+      res = await provider.complete(request);
+    }
 
     text = res.text || text;
     if (!res.toolCalls.length) break;
+
+    // This turn asked for a tool after all, so anything already shown was not
+    // the answer.
+    if (streamedThisTurn) sink?.onReset();
 
     const assistantBlocks: ContentBlock[] = [];
     if (res.text) assistantBlocks.push({ type: "text", text: res.text });
@@ -715,7 +749,11 @@ async function hostedConcierge(
    Entry point
    =========================================================================== */
 
-export async function runConcierge(turns: ChatTurn[], ctx: ToolContext = {}): Promise<ConciergeReply> {
+export async function runConcierge(
+  turns: ChatTurn[],
+  ctx: ToolContext = {},
+  sink?: ConciergeStreamSink,
+): Promise<ConciergeReply> {
   const started = Date.now();
   const provider = await resolveProviderForRequest();
 
@@ -725,10 +763,13 @@ export async function runConcierge(turns: ChatTurn[], ctx: ToolContext = {}): Pr
   }
 
   try {
-    const reply = await hostedConcierge(turns, ctx);
+    const reply = await hostedConcierge(turns, ctx, sink);
     return { ...reply, engine: describeEngine(provider), latencyMs: Date.now() - started };
   } catch (err) {
     // A vendor outage must never take the widget down — degrade, don't fail.
+    // Anything already streamed came from the turn that failed, so it is
+    // withdrawn before the rules engine answers in full.
+    sink?.onReset();
     const reply = await rulesConcierge(turns, ctx);
     return {
       ...reply,

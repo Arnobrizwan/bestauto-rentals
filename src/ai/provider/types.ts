@@ -35,6 +35,9 @@ export type CompletionRequest = {
 
 export type ToolCall = { id: string; name: string; input: Record<string, unknown> };
 
+/** A fragment of assistant text as the model produces it. */
+export type StreamEvent = { type: "text"; delta: string };
+
 export type CompletionResult = {
   text: string;
   toolCalls: ToolCall[];
@@ -49,6 +52,14 @@ export interface LlmProvider {
   readonly label: string;
   readonly model: string;
   complete(req: CompletionRequest): Promise<CompletionResult>;
+  /**
+   * One assistant turn, delivered as it is produced.
+   *
+   * Yields text deltas and finishes with the completed turn, so a caller can
+   * show words as they arrive and still learn whether the model asked for a
+   * tool. Optional: a provider without it is simply not streamed.
+   */
+  stream?(req: CompletionRequest): AsyncGenerator<StreamEvent, CompletionResult, void>;
 }
 
 export class ProviderError extends Error {
